@@ -19,9 +19,12 @@ function spawnSingleCommand(
 
     process.on("error", (error) => {
       if (error.name !== "AbortError") {
-        const message = `Encountered error in command ${getWholeCommandString(command)}`;
-        context.logger.log(LogLevel.ERROR, `${logMessageHeader} ${message}`);
-        context.logger.log(LogLevel.ERROR, error);
+        const message = `Command "${getWholeCommandString(command)}" failed:`;
+        context.logger.log(
+          LogLevel.ERROR,
+          `${logMessageHeader} ${message} ${error.message}`
+        );
+        appendToLogFile(LogLevel.ERROR, error);
       }
       reject(error);
     });
