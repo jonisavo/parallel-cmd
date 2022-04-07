@@ -1,6 +1,6 @@
 import { spawn } from "child_process";
 import { Command, getWholeCommandString, parseCommand } from "./command";
-import { appendToLogFile, log, LogLevel } from "./log";
+import { appendToLogFile, Logger, LogLevel } from "./log";
 
 export interface ChildProcessResult {
   code: number | null;
@@ -9,23 +9,25 @@ export interface ChildProcessResult {
 function spawnSingleCommand(
   command: Command,
   abortSignal: AbortSignal,
-  context: { totalCommands: number }
+  context: { totalCommands: number; logger: Logger }
 ): Promise<ChildProcessResult> {
   return new Promise((resolve, reject) => {
     const process = spawn(command.command, command.args, { signal: abortSignal });
     const commandNumber = command.index + 1;
 
+    const logMessageHeader = `[${commandNumber}/${context.totalCommands}]`;
+
     process.on("error", (error) => {
       if (error.name !== "AbortError") {
         const message = `Encountered error in command ${getWholeCommandString(command)}`;
-        log(LogLevel.ERROR, `[${commandNumber}/${context.totalCommands}] ${message}`);
-        log(LogLevel.ERROR, error);
+        context.logger.log(LogLevel.ERROR, `${logMessageHeader} ${message}`);
+        context.logger.log(LogLevel.ERROR, error);
       }
       reject(error);
     });
 
     process.stdout.on("data", (chunk) => {
-      log(LogLevel.INFO, `[${commandNumber}/${context.totalCommands}] ${String(chunk)}`);
+      context.logger.log(LogLevel.INFO, `${logMessageHeader} ${String(chunk)}`);
     });
 
     process.on("exit", (code) => {
@@ -37,7 +39,8 @@ function spawnSingleCommand(
         message = `Finished with code ${code}`;
       }
 
-      log(LogLevel.INFO, `[${commandNumber}/${context.totalCommands}] ${message}`);
+      context.logger.log(LogLevel.INFO, `${logMessageHeader} ${message}`);
+
       resolve({
         code,
       });
@@ -47,7 +50,7 @@ function spawnSingleCommand(
 
 export default async function parallelCmd(
   commands: string[],
-  { maxProcessCount = 3, abortOnError = false } = {}
+  { maxProcessCount = 3, abortOnError = false, logger = new Logger({ silent: false }) }
 ): Promise<void> {
   const cmds: Command[] = commands.map((str, i) => parseCommand(str, i));
   const runningProcesses: Promise<ChildProcessResult>[] = [];
@@ -56,12 +59,13 @@ export default async function parallelCmd(
 
   const runCommandAtIndex = (index: number): void => {
     const command = cmds[index];
-    log(
+    logger.log(
       LogLevel.INFO,
       `[${index + 1}/${cmds.length}] Running command ${getWholeCommandString(command)}`
     );
     const childProcess = spawnSingleCommand(command, abortController.signal, {
       totalCommands: cmds.length,
+      logger,
     })
       .catch((error) => {
         process.exitCode = 1;
@@ -107,12 +111,12 @@ export default async function parallelCmd(
   if (abort) {
     const remainingProcesses = cmds.length - currentProcessIndex;
     if (remainingProcesses > 0) {
-      log(LogLevel.WARN, `Skipped the remaining ${remainingProcesses} commands`);
+      logger.log(LogLevel.WARN, `Skipped the remaining ${remainingProcesses} commands`);
     }
     return;
   }
 
-  log(LogLevel.INFO, `Waiting for ${runningProcesses.length} processes...`);
+  logger.log(LogLevel.INFO, `Waiting for ${runningProcesses.length} processes...`);
 
   try {
     await Promise.all(runningProcesses);

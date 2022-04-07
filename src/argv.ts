@@ -5,6 +5,8 @@ export default interface ARGV extends parseArgs.ParsedArgs {
   p?: number;
   "abort-on-error"?: boolean;
   a?: boolean;
+  silent?: boolean;
+  s?: boolean;
 }
 
 export function parseProcessCount(argv: ARGV): number | undefined {

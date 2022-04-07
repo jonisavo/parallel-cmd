@@ -10,19 +10,6 @@ export enum LogLevel {
   ERROR = "ERROR",
 }
 
-function getLogFunction(
-  level: LogLevel
-): typeof console.error | typeof console.warn | typeof console.log {
-  switch (level) {
-    case LogLevel.ERROR:
-      return console.error;
-    case LogLevel.WARN:
-      return console.warn;
-    default:
-      return console.log;
-  }
-}
-
 export function appendToLogFile(level: LogLevel, message: unknown): void {
   if (message instanceof Error) {
     message = `${message.message}\n${message.stack}`;
@@ -30,8 +17,31 @@ export function appendToLogFile(level: LogLevel, message: unknown): void {
   appendFileSync(LOG_FILE_PATH, `[${level}] ${message}\n`);
 }
 
-export function log(level: LogLevel, message: unknown): void {
-  const logFunction = getLogFunction(level);
-  logFunction(message);
-  appendToLogFile(level, message);
+export class Logger {
+  silent: boolean;
+
+  constructor({ silent = false } = {}) {
+    this.silent = silent;
+  }
+
+  static getLogFunction(
+    level: LogLevel
+  ): typeof console.error | typeof console.warn | typeof console.log {
+    switch (level) {
+      case LogLevel.ERROR:
+        return console.error;
+      case LogLevel.WARN:
+        return console.warn;
+      default:
+        return console.log;
+    }
+  }
+
+  log(level: LogLevel, message: unknown): void {
+    if (!this.silent) {
+      const logFunction = Logger.getLogFunction(level);
+      logFunction(message);
+    }
+    appendToLogFile(level, message);
+  }
 }
