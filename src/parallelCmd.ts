@@ -7,6 +7,13 @@ export interface ChildProcessResult {
   code: number | null;
 }
 
+export interface ParallelCmdResult {
+  aborted: boolean;
+  totalProcessCount: number;
+  completedProcessCount: number;
+  failedProcessCount: number;
+}
+
 function buildCommandMessageHeader(
   currentCommandNumber: number,
   totalCommandNumber: number
@@ -69,11 +76,14 @@ function spawnSingleCommand(
 export default async function parallelCmd(
   commands: string[],
   { maxProcessCount = 3, abortOnError = false, logger = new Logger({ silent: false }) }
-): Promise<void> {
+): Promise<ParallelCmdResult> {
   const cmds: Command[] = commands.map((str, i) => parseCommand(str, i));
   const runningProcesses: Promise<ChildProcessResult>[] = [];
 
   const abortController = new AbortController();
+
+  let completedProcessCount = 0;
+  let failedProcessCount = 0;
 
   const runCommandAtIndex = (index: number): void => {
     const command = cmds[index];
@@ -86,8 +96,13 @@ export default async function parallelCmd(
       totalCommands: cmds.length,
       logger,
     })
+      .then((result) => {
+        completedProcessCount++;
+        return result;
+      })
       .catch((error) => {
         process.exitCode = 1;
+        failedProcessCount++;
 
         if (abortOnError) {
           abortController.abort();
@@ -114,25 +129,32 @@ export default async function parallelCmd(
     runCommandAtIndex(currentProcessIndex);
   }
 
-  let abort = false;
+  let aborted = false;
 
   while (currentProcessIndex < cmds.length) {
     try {
       await Promise.race(runningProcesses);
     } catch {
-      abort = true;
+      aborted = true;
       break;
     }
 
     runCommandAtIndex(currentProcessIndex++);
   }
 
-  if (abort) {
+  const buildResult = (): ParallelCmdResult => ({
+    aborted,
+    totalProcessCount: cmds.length,
+    completedProcessCount,
+    failedProcessCount,
+  });
+
+  if (aborted) {
     const remainingProcesses = cmds.length - currentProcessIndex;
     if (remainingProcesses > 0) {
       logger.log(LogLevel.WARN, `Skipped the remaining ${remainingProcesses} commands`);
     }
-    return;
+    return buildResult();
   }
 
   logger.log(LogLevel.INFO, `Waiting for ${runningProcesses.length} processes...`);
@@ -140,6 +162,9 @@ export default async function parallelCmd(
   try {
     await Promise.all(runningProcesses);
   } catch {
-    return;
+    aborted = true;
+    return buildResult();
   }
+
+  return buildResult();
 }
