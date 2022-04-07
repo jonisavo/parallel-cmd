@@ -1,9 +1,17 @@
 import { spawn } from "child_process";
 import { Command, getWholeCommandString, parseCommand } from "./command";
 import { appendToLogFile, Logger, LogLevel } from "./log";
+import { Color } from "./color";
 
 export interface ChildProcessResult {
   code: number | null;
+}
+
+function buildCommandMessageHeader(
+  currentCommandNumber: number,
+  totalCommandNumber: number
+): string {
+  return `[${currentCommandNumber}/${totalCommandNumber}]`;
 }
 
 function spawnSingleCommand(
@@ -15,22 +23,25 @@ function spawnSingleCommand(
     const process = spawn(command.command, command.args, { signal: abortSignal });
     const commandNumber = command.index + 1;
 
-    const logMessageHeader = `[${commandNumber}/${context.totalCommands}]`;
-
     process.on("error", (error) => {
       if (error.name !== "AbortError") {
+        const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
         const message = `Command "${getWholeCommandString(command)}" failed:`;
-        context.logger.log(
-          LogLevel.ERROR,
-          `${logMessageHeader} ${message} ${error.message}`
-        );
+        context.logger.log(LogLevel.ERROR, `${message} ${error.message}`, {
+          header,
+          headerColor: Color.RED,
+        });
         appendToLogFile(LogLevel.ERROR, error);
       }
       reject(error);
     });
 
     process.stdout.on("data", (chunk) => {
-      context.logger.log(LogLevel.INFO, `${logMessageHeader} ${String(chunk)}`);
+      const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
+      context.logger.log(LogLevel.INFO, String(chunk), {
+        header,
+        headerColor: Color.WHITE,
+      });
     });
 
     process.on("exit", (code) => {
@@ -42,7 +53,11 @@ function spawnSingleCommand(
         message = `Finished with code ${code}`;
       }
 
-      context.logger.log(LogLevel.INFO, `${logMessageHeader} ${message}`);
+      const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
+      context.logger.log(LogLevel.INFO, message, {
+        header,
+        headerColor: code === null ? Color.YELLOW : Color.GREEN,
+      });
 
       resolve({
         code,
@@ -62,10 +77,11 @@ export default async function parallelCmd(
 
   const runCommandAtIndex = (index: number): void => {
     const command = cmds[index];
-    logger.log(
-      LogLevel.INFO,
-      `[${index + 1}/${cmds.length}] Running command ${getWholeCommandString(command)}`
-    );
+    const header = buildCommandMessageHeader(index + 1, cmds.length);
+    logger.log(LogLevel.INFO, `Running command ${getWholeCommandString(command)}`, {
+      header,
+      headerColor: Color.BLUE,
+    });
     const childProcess = spawnSingleCommand(command, abortController.signal, {
       totalCommands: cmds.length,
       logger,
@@ -126,6 +142,4 @@ export default async function parallelCmd(
   } catch {
     return;
   }
-
-  appendToLogFile(LogLevel.INFO, "All processes run successfully.");
 }

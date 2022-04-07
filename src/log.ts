@@ -1,4 +1,5 @@
 import { appendFileSync } from "fs";
+import { Color, colorText } from "./color";
 
 const DATE_STRING = new Date().toISOString().replace(/\s|:/g, "_");
 const LOG_FILE_PATH = `parallel-cmd-${DATE_STRING}.log`;
@@ -37,11 +38,26 @@ export class Logger {
     }
   }
 
-  log(level: LogLevel, message: unknown): void {
+  log(
+    level: LogLevel,
+    message: unknown,
+    {
+      header = undefined,
+      headerColor = Color.WHITE,
+    }: { header?: string; headerColor?: Color } = {}
+  ): void {
+    const getFullMessage = ({ colorized = false } = {}) => {
+      if (header !== undefined) {
+        const usedHeader = colorized ? colorText(headerColor, header) : header;
+        return `${usedHeader} ${message}`;
+      }
+      return message;
+    };
+
     if (!this.silent) {
       const logFunction = Logger.getLogFunction(level);
-      logFunction(message);
+      logFunction(getFullMessage({ colorized: true }));
     }
-    appendToLogFile(level, message);
+    appendToLogFile(level, getFullMessage());
   }
 }
