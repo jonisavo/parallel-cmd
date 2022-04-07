@@ -1,0 +1,28 @@
+{
+  "include": ["./bin", "./src"],
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "es2019",
+    "lib": ["es2019"],
+
+    /* Modules */
+    "module": "commonjs",
+    "moduleResolution": "node",
+
+    /* Emit */
+    "declaration": true,
+    "outDir": "./dist",
+
+    /* Interop Constraints */
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Type Checking */
+    "strict": true,
+    "noImplicitReturns": true,
+
+    /* Completeness */
+    "skipLibCheck": true
+  }
+}
