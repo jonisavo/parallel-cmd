@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Queue shell commands to run in parallel",
   "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "bin": {
     "parallel-cmd": "./dist/bin/parallel-cmd.js"
   },
@@ -12,6 +13,9 @@
     "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "files": [
+    "dist/"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
