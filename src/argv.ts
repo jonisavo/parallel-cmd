@@ -8,13 +8,3 @@ export default interface ARGV extends parseArgs.ParsedArgs {
   silent?: boolean;
   s?: boolean;
 }
-
-export function parseProcessCount(argv: ARGV): number | undefined {
-  if (typeof argv["process-count"] === "number") {
-    return argv["process-count"];
-  }
-  if (typeof argv.p === "number") {
-    return argv.p;
-  }
-  return undefined;
-}

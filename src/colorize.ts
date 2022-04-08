@@ -8,7 +8,7 @@ export enum Color {
   BLUE,
 }
 
-export function colorText(color: Color, text: string): string {
+export function colorize(color: Color, text: string): string {
   switch (color) {
     case Color.WHITE:
       return white(text);

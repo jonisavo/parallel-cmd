@@ -1,5 +1,5 @@
 import { appendFileSync } from "fs";
-import { Color, colorText } from "./color";
+import { Color, colorize } from "./colorize";
 
 const DATE_STRING = new Date().toISOString().replace(/\s|:/g, "_");
 const LOG_FILE_PATH = `parallel-cmd-${DATE_STRING}.log`;
@@ -48,7 +48,7 @@ export class Logger {
   ): void {
     const getFullMessage = ({ colorized = false } = {}) => {
       if (header !== undefined) {
-        const usedHeader = colorized ? colorText(headerColor, header) : header;
+        const usedHeader = colorized ? colorize(headerColor, header) : header;
         return `${usedHeader} ${message}`;
       }
       return message;

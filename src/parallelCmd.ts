@@ -1,7 +1,14 @@
 import { spawn } from "child_process";
 import { Command, getWholeCommandString, parseCommand } from "./command";
 import { appendToLogFile, Logger, LogLevel } from "./log";
-import { Color } from "./color";
+import { Color } from "./colorize";
+import ARGV from "./argv";
+
+export type ParallelCmdOptions = Partial<{
+  maxProcessCount: number;
+  abortOnError: boolean;
+  logger: Logger;
+}>;
 
 export interface ChildProcessResult {
   code: number | null;
@@ -12,6 +19,27 @@ export interface ParallelCmdResult {
   totalProcessCount: number;
   completedProcessCount: number;
   failedProcessCount: number;
+}
+
+export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions {
+  let maxProcessCount: number | undefined;
+
+  if (typeof argv["process-count"] === "number") {
+    maxProcessCount = argv["process-count"];
+  } else if (typeof argv.p === "number") {
+    maxProcessCount = argv.p;
+  }
+
+  const abortOnError = argv["abort-on-error"] || argv.a;
+
+  const silent = argv.silent || argv.s;
+  const logger = new Logger({ silent });
+
+  return {
+    maxProcessCount,
+    abortOnError,
+    logger,
+  };
 }
 
 function buildCommandMessageHeader(
@@ -75,7 +103,11 @@ function spawnSingleCommand(
 
 export default async function parallelCmd(
   commands: string[],
-  { maxProcessCount = 3, abortOnError = false, logger = new Logger({ silent: false }) }
+  {
+    maxProcessCount = 3,
+    abortOnError = false,
+    logger = new Logger({ silent: false }),
+  }: ParallelCmdOptions
 ): Promise<ParallelCmdResult> {
   const cmds: Command[] = commands.map((str, i) => parseCommand(str, i));
   const runningProcesses: Promise<ChildProcessResult>[] = [];

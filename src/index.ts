@@ -1,4 +1,4 @@
-import ARGV, { parseProcessCount } from "./argv";
-import parallelCmd from "./parallelCmd";
+import ARGV from "./argv";
+import parallelCmd, { parseParallelCmdOptionsFromArgv } from "./parallelCmd";
 
-export { parallelCmd, ARGV, parseProcessCount };
+export { parallelCmd, ARGV, parseParallelCmdOptionsFromArgv };
