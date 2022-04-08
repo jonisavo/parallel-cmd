@@ -11,4 +11,6 @@ export default interface ARGV extends parseArgs.ParsedArgs {
   l?: boolean;
   stderr?: boolean;
   e?: boolean;
+  help?: boolean;
+  h?: boolean;
 }
