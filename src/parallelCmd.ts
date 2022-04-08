@@ -41,7 +41,7 @@ export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions 
   };
 }
 
-function buildCommandMessageHeader(
+function buildMessageHeader(
   currentCommandNumber: number,
   totalCommandNumber: number
 ): string {
@@ -54,26 +54,36 @@ function spawnSingleCommand(
   context: { totalCommands: number; logger: Logger }
 ): Promise<ChildProcessResult> {
   return new Promise((resolve, reject) => {
-    const process = spawn(command.command, command.args, { signal: abortSignal });
+    const process = spawn(command.command, command.args, {
+      signal: abortSignal,
+      shell: true,
+    });
     const commandNumber = command.index + 1;
+
+    const buildHeader = () => buildMessageHeader(commandNumber, context.totalCommands);
 
     process.on("error", (error) => {
       if (error.name !== "AbortError") {
-        const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
         const message = `Command "${getWholeCommandString(command)}" failed:`;
-        context.logger.logError(`${message} ${error.message}`, header);
+        context.logger.logError(`${message} ${error.message}`, buildHeader());
         appendToLogFile(LogLevel.ERROR, error);
       }
       reject(error);
     });
 
+    process.stdout.setEncoding("utf8");
     process.stdout.on("data", (chunk) => {
-      const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
-      context.logger.logInfo(String(chunk), header);
+      const output = String(chunk)
+        // Remove trailing and leading newline
+        .replace(/^[\n\r]/, "")
+        .replace(/[\n\r]$/, "")
+        .split(/\r?\n/);
+
+      output.forEach((chunk) => context.logger.logInfo(chunk, buildHeader()));
     });
 
     process.on("exit", (code) => {
-      const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
+      const header = buildHeader();
 
       if (code === null) {
         context.logger.logWarn("Aborted", header);
@@ -107,7 +117,7 @@ export default async function parallelCmd(
 
   const runCommandAtIndex = (index: number): void => {
     const command = cmds[index];
-    const header = buildCommandMessageHeader(index + 1, cmds.length);
+    const header = buildMessageHeader(index + 1, cmds.length);
     logger.logInfo(`Running command "${getWholeCommandString(command)}"`, header);
     const childProcess = spawnSingleCommand(command, abortController.signal, {
       totalCommands: cmds.length,
