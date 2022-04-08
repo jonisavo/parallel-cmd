@@ -32,9 +32,11 @@ export function buildMessageHeader(
 
 export class Logger {
   silent: boolean;
+  writeToLogFile: boolean;
 
-  constructor({ silent = false } = {}) {
+  constructor({ silent = false, writeToLogFile = false } = {}) {
     this.silent = silent;
+    this.writeToLogFile = writeToLogFile;
   }
 
   static getLogFunction(
@@ -64,7 +66,9 @@ export class Logger {
       const logFunction = Logger.getLogFunction(level);
       logFunction(getFullMessage({ colorized: true }));
     }
-    appendToLogFile(level, getFullMessage());
+    if (this.writeToLogFile) {
+      appendToLogFile(level, getFullMessage());
+    }
   }
 
   logInfo(message: unknown, header?: string): void {

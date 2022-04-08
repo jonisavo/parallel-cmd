@@ -27,7 +27,8 @@ export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions 
 
   const abortOnError = argv["abort-on-error"] || argv.a;
   const silent = argv.silent || argv.s;
-  const logger = new Logger({ silent });
+  const writeToLogFile = argv["write-log"] || argv.l;
+  const logger = new Logger({ silent, writeToLogFile });
 
   return {
     maxProcessCount,

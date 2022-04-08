@@ -7,4 +7,6 @@ export default interface ARGV extends parseArgs.ParsedArgs {
   a?: boolean;
   silent?: boolean;
   s?: boolean;
+  "write-log"?: boolean;
+  l?: boolean;
 }
