@@ -1,18 +1,13 @@
-import { spawn } from "child_process";
 import { Command, getWholeCommandString, parseCommand } from "./command";
-import { appendToLogFile, Logger, LogLevel } from "./log";
-import { Color } from "./colorize";
+import { appendToLogFile, buildMessageHeader, Logger, LogLevel } from "./log";
 import ARGV from "./argv";
+import spawnCommand, { SpawnCommandResult } from "./spawnCommand";
 
 export type ParallelCmdOptions = Partial<{
   maxProcessCount: number;
   abortOnError: boolean;
   logger: Logger;
 }>;
-
-export interface ChildProcessResult {
-  code: number | null;
-}
 
 export interface ParallelCmdResult {
   aborted: boolean;
@@ -41,64 +36,6 @@ export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions 
   };
 }
 
-function buildMessageHeader(
-  currentCommandNumber: number,
-  totalCommandNumber: number
-): string {
-  return `[${currentCommandNumber}/${totalCommandNumber}]`;
-}
-
-function spawnSingleCommand(
-  command: Command,
-  abortSignal: AbortSignal,
-  context: { totalCommands: number; logger: Logger }
-): Promise<ChildProcessResult> {
-  return new Promise((resolve, reject) => {
-    const process = spawn(command.command, command.args, {
-      signal: abortSignal,
-      shell: true,
-    });
-    const commandNumber = command.index + 1;
-
-    const buildHeader = () => buildMessageHeader(commandNumber, context.totalCommands);
-
-    process.on("error", (error) => {
-      if (error.name !== "AbortError") {
-        const message = `Command "${getWholeCommandString(command)}" failed:`;
-        context.logger.logError(`${message} ${error.message}`, buildHeader());
-        appendToLogFile(LogLevel.ERROR, error);
-      }
-      reject(error);
-    });
-
-    process.stdout.setEncoding("utf8");
-    process.stdout.on("data", (chunk) => {
-      const output = String(chunk)
-        // Remove trailing and leading newline
-        .replace(/^[\n\r]/, "")
-        .replace(/[\n\r]$/, "")
-        .split(/\r?\n/);
-
-      output.forEach((chunk) => context.logger.logInfo(chunk, buildHeader()));
-    });
-
-    process.on("exit", (code) => {
-      const header = buildHeader();
-
-      if (code === null) {
-        context.logger.logWarn("Aborted", header);
-      } else {
-        const message = `Finished with code ${code}`;
-        context.logger.log(LogLevel.INFO, message, { header, headerColor: Color.GREEN });
-      }
-
-      resolve({
-        code,
-      });
-    });
-  });
-}
-
 export default async function parallelCmd(
   commands: string[],
   {
@@ -108,7 +45,7 @@ export default async function parallelCmd(
   }: ParallelCmdOptions
 ): Promise<ParallelCmdResult> {
   const cmds: Command[] = commands.map((str, i) => parseCommand(str, i));
-  const runningProcesses: Promise<ChildProcessResult>[] = [];
+  const runningProcesses: Promise<SpawnCommandResult>[] = [];
 
   const abortController = new AbortController();
 
@@ -119,7 +56,7 @@ export default async function parallelCmd(
     const command = cmds[index];
     const header = buildMessageHeader(index + 1, cmds.length);
     logger.logInfo(`Running command "${getWholeCommandString(command)}"`, header);
-    const childProcess = spawnSingleCommand(command, abortController.signal, {
+    const childProcess = spawnCommand(command, abortController.signal, {
       totalCommands: cmds.length,
       logger,
     })

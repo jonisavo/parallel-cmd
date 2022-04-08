@@ -23,6 +23,13 @@ export function appendToLogFile(level: LogLevel, message: unknown): void {
   appendFileSync(LOG_FILE_PATH, `[${level}] ${message}\n`);
 }
 
+export function buildMessageHeader(
+  currentCommandNumber: number,
+  totalCommandNumber: number
+): string {
+  return `[${currentCommandNumber}/${totalCommandNumber}]`;
+}
+
 export class Logger {
   silent: boolean;
 
