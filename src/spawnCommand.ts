@@ -2,10 +2,18 @@ import { spawn } from "child_process";
 import internal from "stream";
 import { Color } from "./colorize";
 import { Command, getWholeCommandString } from "./command";
-import { appendToLogFile, buildMessageHeader, Logger, LogLevel } from "./log";
+import { appendToLogFile, Logger, LogLevel } from "./log";
+import { HeaderTransformerFunction } from "./parallelCmd";
 
 export interface SpawnCommandResult {
   code: number | null;
+}
+
+export interface SpawnCommandContext {
+  totalCommands: number;
+  logger: Logger;
+  outputStderr: boolean;
+  headerTransformer: HeaderTransformerFunction;
 }
 
 function trimAndSplitOutput(output: string): string[] {
@@ -20,16 +28,15 @@ function processStream(stream: internal.Readable, func: (data: string[]) => void
 export default function spawnCommand(
   command: Command,
   abortSignal: AbortSignal,
-  context: { totalCommands: number; logger: Logger; outputStderr: boolean }
+  context: SpawnCommandContext
 ): Promise<SpawnCommandResult> {
   return new Promise((resolve, reject) => {
     const process = spawn(command.command, command.args, {
       signal: abortSignal,
       shell: true,
     });
-    const commandNumber = command.index + 1;
 
-    const buildHeader = () => buildMessageHeader(commandNumber, context.totalCommands);
+    const buildHeader = () => context.headerTransformer(command, context.totalCommands);
 
     process.on("error", (error) => {
       if (error.name !== "AbortError") {

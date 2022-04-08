@@ -1,12 +1,18 @@
 import { Command, getWholeCommandString, parseCommand } from "./command";
-import { appendToLogFile, buildMessageHeader, Logger, LogLevel } from "./log";
+import { appendToLogFile, DEFAULT_HEADER_TRANSFORMER, Logger, LogLevel } from "./log";
 import ARGV from "./argv";
-import spawnCommand, { SpawnCommandResult } from "./spawnCommand";
+import spawnCommand, { SpawnCommandContext, SpawnCommandResult } from "./spawnCommand";
+
+export type HeaderTransformerFunction = (
+  command: Command,
+  totalProcessCount: number
+) => string;
 
 export type ParallelCmdOptions = Partial<{
   maxProcessCount: number;
   abortOnError: boolean;
   outputStderr: boolean;
+  headerTransformer: HeaderTransformerFunction;
   logger: Logger;
 }>;
 
@@ -46,6 +52,7 @@ export default async function parallelCmd(
     maxProcessCount = 3,
     abortOnError = false,
     outputStderr = false,
+    headerTransformer = DEFAULT_HEADER_TRANSFORMER,
     logger = new Logger({ silent: false }),
   }: ParallelCmdOptions
 ): Promise<ParallelCmdResult> {
@@ -57,15 +64,19 @@ export default async function parallelCmd(
   let completedProcessCount = 0;
   let failedProcessCount = 0;
 
+  const spawnCommandContext: SpawnCommandContext = {
+    totalCommands: cmds.length,
+    outputStderr,
+    headerTransformer,
+    logger,
+  };
+
   const runCommandAtIndex = (index: number): void => {
     const command = cmds[index];
-    const header = buildMessageHeader(index + 1, cmds.length);
+    const header = headerTransformer(command, cmds.length);
+    const signal = abortController.signal;
     logger.logInfo(`Running command "${getWholeCommandString(command)}"`, header);
-    const childProcess = spawnCommand(command, abortController.signal, {
-      totalCommands: cmds.length,
-      outputStderr,
-      logger,
-    })
+    const childProcess = spawnCommand(command, signal, spawnCommandContext)
       .then((result) => {
         completedProcessCount++;
         return result;

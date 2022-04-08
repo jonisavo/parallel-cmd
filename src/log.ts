@@ -1,5 +1,6 @@
 import { appendFileSync } from "fs";
 import { Color, colorize } from "./colorize";
+import { HeaderTransformerFunction } from "./parallelCmd";
 
 const DATE_STRING = new Date().toISOString().replace(/\s|:/g, "_");
 const LOG_FILE_PATH = `parallel-cmd-${DATE_STRING}.log`;
@@ -23,12 +24,12 @@ export function appendToLogFile(level: LogLevel, message: unknown): void {
   appendFileSync(LOG_FILE_PATH, `[${level}] ${message}\n`);
 }
 
-export function buildMessageHeader(
-  currentCommandNumber: number,
-  totalCommandNumber: number
-): string {
-  return `[${currentCommandNumber}/${totalCommandNumber}]`;
-}
+export const DEFAULT_HEADER_TRANSFORMER: HeaderTransformerFunction = (
+  command,
+  totalProcessCount
+) => {
+  return `[${command.index + 1}/${totalProcessCount}]`;
+};
 
 export class Logger {
   silent: boolean;
