@@ -10,7 +10,7 @@ export interface SpawnCommandResult {
 }
 
 export interface SpawnCommandContext {
-  totalCommands: number;
+  allCommands: Command[];
   logger: Logger;
   outputStderr: boolean;
   headerTransformer: HeaderTransformerFunction;
@@ -36,7 +36,7 @@ export default function spawnCommand(
       shell: true,
     });
 
-    const buildHeader = () => context.headerTransformer(command, context.totalCommands);
+    const buildHeader = () => context.headerTransformer(command, context.allCommands);
 
     process.on("error", (error) => {
       if (error.name !== "AbortError") {

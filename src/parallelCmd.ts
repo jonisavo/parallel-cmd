@@ -5,7 +5,7 @@ import spawnCommand, { SpawnCommandContext, SpawnCommandResult } from "./spawnCo
 
 export type HeaderTransformerFunction = (
   command: Command,
-  totalProcessCount: number
+  allCommands: Command[]
 ) => string;
 
 export type ParallelCmdOptions = Partial<{
@@ -65,7 +65,7 @@ export default async function parallelCmd(
   let failedProcessCount = 0;
 
   const spawnCommandContext: SpawnCommandContext = {
-    totalCommands: cmds.length,
+    allCommands: cmds,
     outputStderr,
     headerTransformer,
     logger,
@@ -73,7 +73,7 @@ export default async function parallelCmd(
 
   const runCommandAtIndex = (index: number): void => {
     const command = cmds[index];
-    const header = headerTransformer(command, cmds.length);
+    const header = headerTransformer(command, cmds);
     const signal = abortController.signal;
     logger.logInfo(`Running command "${getWholeCommandString(command)}"`, header);
     const childProcess = spawnCommand(command, signal, spawnCommandContext)
