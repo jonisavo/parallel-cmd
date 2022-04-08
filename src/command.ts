@@ -15,5 +15,9 @@ export function parseCommand(input: string, index: number): Command {
 }
 
 export function getWholeCommandString(command: Command): string {
-  return `${command.command} ${command.args.join(" ")}`;
+  let commandString = command.command;
+  if (command.args.length > 0) {
+    commandString += ` ${command.args.join(" ")}`;
+  }
+  return commandString;
 }
