@@ -11,6 +11,11 @@ export enum LogLevel {
   ERROR = "ERROR",
 }
 
+type LogOptions = Partial<{
+  header: string;
+  headerColor: Color;
+}>;
+
 export function appendToLogFile(level: LogLevel, message: unknown): void {
   if (message instanceof Error) {
     message = `${message.message}\n${message.stack}`;
@@ -38,17 +43,11 @@ export class Logger {
     }
   }
 
-  log(
-    level: LogLevel,
-    message: unknown,
-    {
-      header = undefined,
-      headerColor = Color.WHITE,
-    }: { header?: string; headerColor?: Color } = {}
-  ): void {
+  log(level: LogLevel, message: unknown, options: LogOptions = {}): void {
     const getFullMessage = ({ colorized = false } = {}) => {
-      if (header !== undefined) {
-        const usedHeader = colorized ? colorize(headerColor, header) : header;
+      if (options.header !== undefined) {
+        const color = options.headerColor ?? Color.WHITE;
+        const usedHeader = colorized ? colorize(color, options.header) : options.header;
         return `${usedHeader} ${message}`;
       }
       return message;
