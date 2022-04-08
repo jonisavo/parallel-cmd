@@ -179,12 +179,10 @@ export default async function parallelCmd(
   if (aborted) {
     const remainingProcesses = cmds.length - currentProcessIndex;
     if (remainingProcesses > 0) {
-      logger.logWarn(`Skipped the remaining ${remainingProcesses} commands`);
+      appendToLogFile(LogLevel.WARN, `Skipped ${remainingProcesses} commands`);
     }
     return buildResult();
   }
-
-  logger.logInfo(`Waiting for ${runningProcesses.length} processes...`);
 
   try {
     await Promise.all(runningProcesses);
