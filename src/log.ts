@@ -26,9 +26,9 @@ export function appendToLogFile(level: LogLevel, message: unknown): void {
 
 export const DEFAULT_HEADER_TRANSFORMER: HeaderTransformerFunction = (
   command,
-  totalProcessCount
+  allCommands
 ) => {
-  return `[${command.index + 1}/${totalProcessCount}]`;
+  return `[${command.index + 1}/${allCommands.length}]`;
 };
 
 export class Logger {
