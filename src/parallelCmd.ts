@@ -6,6 +6,7 @@ import spawnCommand, { SpawnCommandResult } from "./spawnCommand";
 export type ParallelCmdOptions = Partial<{
   maxProcessCount: number;
   abortOnError: boolean;
+  outputStderr: boolean;
   logger: Logger;
 }>;
 
@@ -28,11 +29,13 @@ export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions 
   const abortOnError = argv["abort-on-error"] || argv.a;
   const silent = argv.silent || argv.s;
   const writeToLogFile = argv["write-log"] || argv.l;
+  const outputStderr = argv.stderr || argv.e;
   const logger = new Logger({ silent, writeToLogFile });
 
   return {
     maxProcessCount,
     abortOnError,
+    outputStderr,
     logger,
   };
 }
@@ -42,6 +45,7 @@ export default async function parallelCmd(
   {
     maxProcessCount = 3,
     abortOnError = false,
+    outputStderr = false,
     logger = new Logger({ silent: false }),
   }: ParallelCmdOptions
 ): Promise<ParallelCmdResult> {
@@ -59,6 +63,7 @@ export default async function parallelCmd(
     logger.logInfo(`Running command "${getWholeCommandString(command)}"`, header);
     const childProcess = spawnCommand(command, abortController.signal, {
       totalCommands: cmds.length,
+      outputStderr,
       logger,
     })
       .then((result) => {
