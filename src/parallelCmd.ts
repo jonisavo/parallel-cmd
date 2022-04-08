@@ -31,7 +31,6 @@ export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions 
   }
 
   const abortOnError = argv["abort-on-error"] || argv.a;
-
   const silent = argv.silent || argv.s;
   const logger = new Logger({ silent });
 
@@ -62,10 +61,7 @@ function spawnSingleCommand(
       if (error.name !== "AbortError") {
         const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
         const message = `Command "${getWholeCommandString(command)}" failed:`;
-        context.logger.log(LogLevel.ERROR, `${message} ${error.message}`, {
-          header,
-          headerColor: Color.RED,
-        });
+        context.logger.logError(`${message} ${error.message}`, header);
         appendToLogFile(LogLevel.ERROR, error);
       }
       reject(error);
@@ -73,26 +69,18 @@ function spawnSingleCommand(
 
     process.stdout.on("data", (chunk) => {
       const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
-      context.logger.log(LogLevel.INFO, String(chunk), {
-        header,
-        headerColor: Color.WHITE,
-      });
+      context.logger.logInfo(String(chunk), header);
     });
 
     process.on("exit", (code) => {
-      let message: string;
+      const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
 
       if (code === null) {
-        message = "Aborted";
+        context.logger.logWarn("Aborted", header);
       } else {
-        message = `Finished with code ${code}`;
+        const message = `Finished with code ${code}`;
+        context.logger.log(LogLevel.INFO, message, { header, headerColor: Color.GREEN });
       }
-
-      const header = buildCommandMessageHeader(commandNumber, context.totalCommands);
-      context.logger.log(LogLevel.INFO, message, {
-        header,
-        headerColor: code === null ? Color.YELLOW : Color.GREEN,
-      });
 
       resolve({
         code,
@@ -120,10 +108,7 @@ export default async function parallelCmd(
   const runCommandAtIndex = (index: number): void => {
     const command = cmds[index];
     const header = buildCommandMessageHeader(index + 1, cmds.length);
-    logger.log(LogLevel.INFO, `Running command ${getWholeCommandString(command)}`, {
-      header,
-      headerColor: Color.BLUE,
-    });
+    logger.logInfo(`Running command "${getWholeCommandString(command)}"`, header);
     const childProcess = spawnSingleCommand(command, abortController.signal, {
       totalCommands: cmds.length,
       logger,
@@ -184,12 +169,12 @@ export default async function parallelCmd(
   if (aborted) {
     const remainingProcesses = cmds.length - currentProcessIndex;
     if (remainingProcesses > 0) {
-      logger.log(LogLevel.WARN, `Skipped the remaining ${remainingProcesses} commands`);
+      logger.logWarn(`Skipped the remaining ${remainingProcesses} commands`);
     }
     return buildResult();
   }
 
-  logger.log(LogLevel.INFO, `Waiting for ${runningProcesses.length} processes...`);
+  logger.logInfo(`Waiting for ${runningProcesses.length} processes...`);
 
   try {
     await Promise.all(runningProcesses);

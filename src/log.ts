@@ -59,4 +59,16 @@ export class Logger {
     }
     appendToLogFile(level, getFullMessage());
   }
+
+  logInfo(message: unknown, header?: string): void {
+    this.log(LogLevel.INFO, message, { header, headerColor: Color.BLUE });
+  }
+
+  logWarn(message: unknown, header?: string): void {
+    this.log(LogLevel.WARN, message, { header, headerColor: Color.YELLOW });
+  }
+
+  logError(message: unknown, header?: string): void {
+    this.log(LogLevel.ERROR, message, { header, headerColor: Color.RED });
+  }
 }
