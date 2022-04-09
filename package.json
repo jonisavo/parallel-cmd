@@ -18,7 +18,7 @@
   ],
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@types/cross-spawn": "^6.0.2",
     "@types/jest": "^27.4.1",
