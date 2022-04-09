@@ -1,3 +1,5 @@
+import treeKill from "tree-kill";
+
 export interface Command {
   command: string;
   args: string[];
@@ -20,4 +22,16 @@ export function getWholeCommandString(command: Command): string {
     commandString += ` ${command.args.join(" ")}`;
   }
   return commandString;
+}
+
+export function defaultCommandKillFunction(pid: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    treeKill(pid, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
 }

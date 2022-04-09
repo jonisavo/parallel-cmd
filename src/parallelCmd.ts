@@ -1,7 +1,13 @@
-import { Command, getWholeCommandString, parseCommand } from "./command";
-import { appendToLogFile, DEFAULT_HEADER_TRANSFORMER, Logger, LogLevel } from "./log";
+import {
+  Command,
+  defaultCommandKillFunction,
+  getWholeCommandString,
+  parseCommand,
+} from "./command";
+import { appendToLogFile, defaultHeaderTransformer, Logger, LogLevel } from "./log";
 import ARGV from "./argv";
 import spawnCommand, { SpawnCommandContext, SpawnCommandResult } from "./spawnCommand";
+import spawn from "cross-spawn";
 
 export type HeaderTransformerFunction = (
   command: Command,
@@ -11,10 +17,8 @@ export type HeaderTransformerFunction = (
 export type ParallelCmdOptions = Partial<{
   maxProcessCount: number;
   abortOnError: boolean;
-  outputStderr: boolean;
-  headerTransformer: HeaderTransformerFunction;
-  logger: Logger;
-}>;
+}> &
+  Partial<SpawnCommandContext>;
 
 export interface ParallelCmdResult {
   aborted: boolean;
@@ -49,34 +53,37 @@ export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions 
 export default async function parallelCmd(
   commands: string[],
   {
+    abortController = new AbortController(),
     maxProcessCount = 3,
     abortOnError = false,
     outputStderr = false,
-    headerTransformer = DEFAULT_HEADER_TRANSFORMER,
+    headerTransformer = defaultHeaderTransformer,
+    spawnFunction = spawn,
+    killFunction = defaultCommandKillFunction,
     logger = new Logger({ silent: false }),
   }: ParallelCmdOptions
 ): Promise<ParallelCmdResult> {
   const cmds: Command[] = commands.map((str, i) => parseCommand(str, i));
   const runningProcesses: Promise<SpawnCommandResult>[] = [];
 
-  const abortController = new AbortController();
-
   let completedProcessCount = 0;
   let failedProcessCount = 0;
 
   const spawnCommandContext: SpawnCommandContext = {
+    abortController,
     allCommands: cmds,
     outputStderr,
     headerTransformer,
+    spawnFunction,
+    killFunction,
     logger,
   };
 
   const runCommandAtIndex = (index: number): void => {
     const command = cmds[index];
     const header = headerTransformer(command, cmds);
-    const signal = abortController.signal;
     logger.logInfo(`Running command "${getWholeCommandString(command)}"`, header);
-    const childProcess = spawnCommand(command, signal, spawnCommandContext)
+    const childProcess = spawnCommand(command, spawnCommandContext)
       .then((result) => {
         completedProcessCount++;
         return result;

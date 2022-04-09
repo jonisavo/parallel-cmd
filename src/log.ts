@@ -24,7 +24,7 @@ export function appendToLogFile(level: LogLevel, message: unknown): void {
   appendFileSync(LOG_FILE_PATH, `[${level}] ${message}\n`);
 }
 
-export const DEFAULT_HEADER_TRANSFORMER: HeaderTransformerFunction = (
+export const defaultHeaderTransformer: HeaderTransformerFunction = (
   command,
   allCommands
 ) => {

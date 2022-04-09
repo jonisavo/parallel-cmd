@@ -1,6 +1,5 @@
-import spawn from "cross-spawn";
+import { ChildProcess } from "child_process";
 import internal from "stream";
-import treeKill from "tree-kill";
 import { Color } from "./colorize";
 import { Command, getWholeCommandString } from "./command";
 import { appendToLogFile, Logger, LogLevel } from "./log";
@@ -16,15 +15,21 @@ interface ExtendedAbortSignal extends AbortSignal {
   removeEventListener: (type: "abort", listener: (event: "abort") => void) => void;
 }
 
+export type CommandSpawnFunction = (command: string, args: string[]) => ChildProcess;
+export type CommandKillFunction = (pid: number) => Promise<void>;
+
 export interface SpawnCommandResult {
   code: number | null;
 }
 
 export interface SpawnCommandContext {
+  abortController: AbortController;
   allCommands: Command[];
   logger: Logger;
   outputStderr: boolean;
   headerTransformer: HeaderTransformerFunction;
+  spawnFunction: CommandSpawnFunction;
+  killFunction: CommandKillFunction;
 }
 
 function trimAndSplitOutput(output: string): string[] {
@@ -44,13 +49,12 @@ function processStream(
 
 export default function spawnCommand(
   command: Command,
-  signal: AbortSignal,
   context: SpawnCommandContext
 ): Promise<SpawnCommandResult> {
   return new Promise((resolve, reject) => {
     let aborted = false;
-    const abortSignal = signal as unknown as ExtendedAbortSignal;
-    const process = spawn(command.command, command.args);
+    const abortSignal = context.abortController.signal as unknown as ExtendedAbortSignal;
+    const process = context.spawnFunction(command.command, command.args);
 
     const onAbort = () => {
       abort(new Error("The operation was aborted"));
@@ -79,13 +83,12 @@ export default function spawnCommand(
       if (aborted || process.pid === undefined || process.killed) {
         return;
       }
-      treeKill(process.pid, (err) => {
-        if (err) {
-          appendToLogFile(LogLevel.ERROR, `Failed to kill process: ${err}`);
-        } else {
-          appendToLogFile(LogLevel.INFO, `Killed PID ${process.pid}`);
-        }
-      });
+      context
+        .killFunction(process.pid)
+        .then(() => appendToLogFile(LogLevel.INFO, `Killed PID ${process.pid}`))
+        .catch((err) =>
+          appendToLogFile(LogLevel.ERROR, `Failed to kill process: ${err}`)
+        );
       aborted = true;
       end({ error });
     };
