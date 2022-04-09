@@ -37,7 +37,7 @@ export default async function parallelCmd(
     spawnFunction = spawn,
     killFunction = defaultCommandKillFunction,
     logger = new Logger({ silent: false }),
-  }: ParallelCmdOptions
+  }: ParallelCmdOptions = {}
 ): Promise<ParallelCmdResult> {
   const cmds: Command[] = commands.map((str, i) => parseCommand(str, i));
   const runningProcesses: Promise<SpawnCommandResult>[] = [];
