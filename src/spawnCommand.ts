@@ -1,9 +1,20 @@
-import { spawn } from "child_process";
+import spawn from "cross-spawn";
 import internal from "stream";
+import treeKill from "tree-kill";
 import { Color } from "./colorize";
 import { Command, getWholeCommandString } from "./command";
 import { appendToLogFile, Logger, LogLevel } from "./log";
 import { HeaderTransformerFunction } from "./parallelCmd";
+
+// Define interface missing from @types/node
+interface ExtendedAbortSignal extends AbortSignal {
+  addEventListener: (
+    type: "abort",
+    listener: (event: "abort") => void,
+    options: { once: boolean }
+  ) => void;
+  removeEventListener: (type: "abort", listener: (event: "abort") => void) => void;
+}
 
 export interface SpawnCommandResult {
   code: number | null;
@@ -20,31 +31,70 @@ function trimAndSplitOutput(output: string): string[] {
   return output.trim().split(/\r?\n/);
 }
 
-function processStream(stream: internal.Readable, func: (data: string[]) => void): void {
+function processStream(
+  stream: internal.Readable | null,
+  callback: (data: string[]) => void
+): void {
+  if (stream === null) {
+    return;
+  }
   stream.setEncoding("utf8");
-  stream.on("data", (chunk) => func(trimAndSplitOutput(String(chunk))));
+  stream.on("data", (chunk) => callback(trimAndSplitOutput(String(chunk))));
 }
 
 export default function spawnCommand(
   command: Command,
-  abortSignal: AbortSignal,
+  signal: AbortSignal,
   context: SpawnCommandContext
 ): Promise<SpawnCommandResult> {
   return new Promise((resolve, reject) => {
-    const process = spawn(command.command, command.args, {
-      signal: abortSignal,
-      shell: true,
-    });
+    let aborted = false;
+    const abortSignal = signal as unknown as ExtendedAbortSignal;
+    const process = spawn(command.command, command.args);
+
+    const onAbort = () => {
+      abort(new Error("The operation was aborted"));
+    };
+
+    abortSignal.addEventListener("abort", onAbort, { once: true });
+
+    const end = (result: Partial<{ code: number | null; error: Error }>) => {
+      abortSignal.removeEventListener("abort", onAbort);
+      if (result.error !== undefined) {
+        reject(result.error);
+      } else {
+        resolve({ code: result.code ?? null });
+      }
+    };
 
     const buildHeader = () => context.headerTransformer(command, context.allCommands);
 
+    const handleError = (error: Error) => {
+      const message = `Command "${getWholeCommandString(command)}" failed:`;
+      context.logger.logError(`${message} ${error.message}`, buildHeader());
+      appendToLogFile(LogLevel.ERROR, error);
+    };
+
+    const abort = (error: Error) => {
+      if (aborted || process.pid === undefined || process.killed) {
+        return;
+      }
+      treeKill(process.pid, (err) => {
+        if (err) {
+          appendToLogFile(LogLevel.ERROR, `Failed to kill process: ${err}`);
+        } else {
+          appendToLogFile(LogLevel.INFO, `Killed PID ${process.pid}`);
+        }
+      });
+      aborted = true;
+      end({ error });
+    };
+
     process.on("error", (error) => {
       if (error.name !== "AbortError") {
-        const message = `Command "${getWholeCommandString(command)}" failed:`;
-        context.logger.logError(`${message} ${error.message}`, buildHeader());
-        appendToLogFile(LogLevel.ERROR, error);
+        handleError(error);
       }
-      reject(error);
+      end({ error });
     });
 
     processStream(process.stdout, (data) => {
@@ -60,14 +110,26 @@ export default function spawnCommand(
     process.on("exit", (code) => {
       const header = buildHeader();
 
+      if (code !== null && code !== 0) {
+        let error: Error;
+        if (aborted) {
+          error = new Error("Process aborted");
+        } else {
+          error = new Error(`Process exited with code ${code}`);
+        }
+        handleError(error);
+        end({ error });
+        return;
+      }
+
       if (code === null) {
         context.logger.logWarn("Aborted", header);
       } else {
-        const message = `Finished with code ${code}`;
+        const message = "Finished successfully";
         context.logger.log(LogLevel.INFO, message, { header, headerColor: Color.GREEN });
       }
 
-      resolve({ code });
+      end({ code });
     });
   });
 }
