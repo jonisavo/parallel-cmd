@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import parseArgs from "minimist";
-import parallelCmd, { ARGV, parseParallelCmdOptionsFromArgv } from "../src/index";
+import parallelCmd from "../src/index";
+import ARGV, { parseParallelCmdOptionsFromArgv } from "./argv";
 import help from "./help";
 
 const argv: ARGV = parseArgs(process.argv.slice(2));

@@ -1,6 +1,5 @@
-import ARGV from "./argv";
-import parallelCmd, { parseParallelCmdOptionsFromArgv } from "./parallelCmd";
+import parallelCmd from "./parallelCmd";
 import { Logger } from "./log";
 
 export default parallelCmd;
-export { parallelCmd, ARGV, parseParallelCmdOptionsFromArgv, Logger };
+export { parallelCmd, Logger };

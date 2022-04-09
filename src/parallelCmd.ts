@@ -5,7 +5,6 @@ import {
   parseCommand,
 } from "./command";
 import { appendToLogFile, defaultHeaderTransformer, Logger, LogLevel } from "./log";
-import ARGV from "./argv";
 import spawnCommand, { SpawnCommandContext, SpawnCommandResult } from "./spawnCommand";
 import spawn from "cross-spawn";
 
@@ -25,29 +24,6 @@ export interface ParallelCmdResult {
   totalProcessCount: number;
   completedProcessCount: number;
   failedProcessCount: number;
-}
-
-export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions {
-  let maxProcessCount: number | undefined;
-
-  if (typeof argv["process-count"] === "number") {
-    maxProcessCount = argv["process-count"];
-  } else if (typeof argv.p === "number") {
-    maxProcessCount = argv.p;
-  }
-
-  const abortOnError = argv["abort-on-error"] || argv.a;
-  const silent = argv.silent || argv.s;
-  const writeToLogFile = argv["write-log"] || argv.l;
-  const outputStderr = argv.stderr || argv.e;
-  const logger = new Logger({ silent, writeToLogFile });
-
-  return {
-    maxProcessCount,
-    abortOnError,
-    outputStderr,
-    logger,
-  };
 }
 
 export default async function parallelCmd(
