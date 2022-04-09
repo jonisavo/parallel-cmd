@@ -2,7 +2,7 @@ import { appendFileSync } from "fs";
 import { Color, colorize } from "./colorize";
 import { HeaderTransformerFunction } from "./parallelCmd";
 
-const DATE_STRING = new Date().toISOString().replace(/\s|:/g, "_");
+export const DATE_STRING = new Date().toISOString().replace(/\s|:/g, "_");
 const LOG_FILE_PATH = `parallel-cmd-${DATE_STRING}.log`;
 
 export enum LogLevel {
