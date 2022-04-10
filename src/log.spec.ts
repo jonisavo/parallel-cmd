@@ -111,6 +111,14 @@ describe("Logging", () => {
         logger.appendToLogFile(LogLevel.ERROR, error);
         expectLogFileMessage(`[ERROR] Error\n${error.stack}`);
       });
+
+      it("does not output anything if writing to log file is disabled", () => {
+        logger.writeToLogFile = false;
+        logger.appendToLogFile(LogLevel.DEBUG, "Message");
+        logger.appendToLogFile(LogLevel.ERROR, "Message");
+        logger.appendToLogFile(LogLevel.WARN, "Message");
+        expect(appendFileSyncSpy).not.toHaveBeenCalled();
+      });
     });
 
     describe("#log", () => {
