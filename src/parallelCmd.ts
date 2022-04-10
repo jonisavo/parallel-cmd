@@ -73,7 +73,7 @@ export default async function parallelCmd(
           throw error;
         }
 
-        return { code: null };
+        return { code: -1 };
       })
       .finally(() => {
         const indexOfProcess = runningProcesses.indexOf(childProcess);
