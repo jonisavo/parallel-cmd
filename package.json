@@ -18,8 +18,18 @@
   "files": [
     "dist/"
   ],
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "shell",
+    "parallel",
+    "queue",
+    "concurrent",
+    "command"
+  ],
+  "author": {
+    "name": "Joni Savolainen",
+    "email": "joni@savolainen.io",
+    "url": "https://savolainen.io"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/cross-spawn": "^6.0.2",
