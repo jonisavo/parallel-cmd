@@ -9,7 +9,9 @@ describe("Logging", () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    appendFileSyncSpy = jest.spyOn(fs, "appendFileSync");
+    appendFileSyncSpy = jest.spyOn(fs, "appendFileSync").mockImplementation(() => {
+      /* dismiss */
+    });
     consoleLogSpy = jest.spyOn(console, "log");
     consoleWarnSpy = jest.spyOn(console, "warn");
     consoleErrorSpy = jest.spyOn(console, "error");
