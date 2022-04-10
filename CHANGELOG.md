@@ -1,3 +1,7 @@
+# 0.3.1 [2022-04-10]
+
+- Fix build error in `parallelCmd`.ts
+
 # 0.3.0 [2022-04-10]
 
 - Add instance method `Logger#appendToLogFile`
