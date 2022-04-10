@@ -1,9 +1,15 @@
-import { execFile } from "child_process";
+import treeKill from "tree-kill";
 import {
   defaultCommandKillFunction,
   getWholeCommandString,
   parseCommand,
 } from "./command";
+
+jest.mock("tree-kill");
+
+afterAll(() => {
+  jest.restoreAllMocks();
+});
 
 describe("Command utilities", () => {
   const npmInstallConcurrentlyString = "npm install -g concurrently";
@@ -49,22 +55,34 @@ describe("Command utilities", () => {
   });
 
   describe("defaultCommandKillFunction", () => {
-    it("kills a process and resolves when successful", async () => {
-      expect.assertions(1);
-      const process = execFile("node", ["-e", "setTimeout(() => {}, 3000)"]);
-      process.on("close", (code, _signal) => {
-        expect(code).toEqual(1);
+    let treeKillSpy: jest.MockedFunction<typeof treeKill>;
+
+    const mockTreeKill = (error: Error | undefined) => {
+      treeKillSpy.mockImplementation((_pid, signal, callback) => {
+        if (typeof signal === "function") {
+          (signal as unknown as (error: Error | undefined) => void)(error);
+        }
+        if (typeof callback === "function") {
+          callback(error);
+        }
       });
+    };
 
-      if (process.pid === undefined) {
-        throw new Error("Process could not start");
-      }
+    beforeEach(() => {
+      treeKillSpy = treeKill as unknown as jest.MockedFunction<typeof treeKill>;
+    });
 
-      await defaultCommandKillFunction(process.pid);
+    it("calls treeKill", async () => {
+      mockTreeKill(undefined);
+
+      await defaultCommandKillFunction(1);
+
+      expect(treeKillSpy).toHaveBeenCalled();
     });
 
     it("rejects on error", async () => {
-      await expect(defaultCommandKillFunction(0)).rejects.toBeTruthy();
+      mockTreeKill(new Error("Test"));
+      await expect(defaultCommandKillFunction(0)).rejects.toEqual(new Error("Test"));
     });
   });
 });
