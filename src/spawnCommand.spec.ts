@@ -79,6 +79,7 @@ describe("Command spawing", () => {
       logger: {
         silent: false,
         writeToLogFile: false,
+        appendToLogFile: jest.fn(),
         log: jest.fn(),
         logInfo: jest.fn(),
         logError: jest.fn(),
@@ -142,7 +143,9 @@ describe("Command spawing", () => {
     });
 
     it("outputs error message when the process exits with non-zero exit code", async () => {
-      await expect(spawnCommand(command, exitCodeOneContext)).rejects;
+      await spawnCommand(command, exitCodeOneContext).catch(() => {
+        /* dismiss */
+      });
 
       expect(defaultContext.logger.logError).toHaveBeenCalledWith(
         'Command "test a b" failed: Process exited with code 1',

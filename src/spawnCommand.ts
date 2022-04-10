@@ -2,7 +2,7 @@ import { ChildProcess } from "child_process";
 import internal from "stream";
 import { Color } from "./colorize";
 import { Command, getWholeCommandString } from "./command";
-import { appendToLogFile, Logger, LogLevel } from "./log";
+import { Logger, LogLevel } from "./log";
 import { HeaderTransformerFunction } from "./parallelCmd";
 
 // Define interface missing from @types/node
@@ -76,7 +76,7 @@ export default function spawnCommand(
     const handleError = (error: Error) => {
       const message = `Command "${getWholeCommandString(command)}" failed:`;
       context.logger.logError(`${message} ${error.message}`, buildHeader());
-      appendToLogFile(LogLevel.ERROR, error);
+      context.logger.appendToLogFile(LogLevel.ERROR, error);
     };
 
     const abort = (error: Error) => {
@@ -85,9 +85,11 @@ export default function spawnCommand(
       }
       context
         .killFunction(process.pid)
-        .then(() => appendToLogFile(LogLevel.INFO, `Killed PID ${process.pid}`))
+        .then(() =>
+          context.logger.appendToLogFile(LogLevel.INFO, `Killed PID ${process.pid}`)
+        )
         .catch((err) =>
-          appendToLogFile(LogLevel.ERROR, `Failed to kill process: ${err}`)
+          context.logger.appendToLogFile(LogLevel.ERROR, `Failed to kill process: ${err}`)
         );
       aborted = true;
       end({ error });

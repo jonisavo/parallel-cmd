@@ -1,12 +1,6 @@
 import fs from "fs";
 import { blue, red, white, yellow } from "kleur/colors";
-import {
-  appendToLogFile,
-  DATE_STRING,
-  defaultHeaderTransformer,
-  Logger,
-  LogLevel,
-} from "./log";
+import { DATE_STRING, defaultHeaderTransformer, Logger, LogLevel } from "./log";
 
 describe("Logging", () => {
   let appendFileSyncSpy: jest.SpyInstance;
@@ -36,28 +30,6 @@ describe("Logging", () => {
   };
 
   describe("Log utilities", () => {
-    describe("appendToLogFile", () => {
-      it("calls appendFileSync with the file path and message", () => {
-        appendToLogFile(LogLevel.INFO, "Message");
-        expectLogFileMessage("[INFO] Message");
-      });
-
-      it("it uses the given log level in the output", () => {
-        appendToLogFile(LogLevel.DEBUG, "Message");
-        expectLogFileMessage("[DEBUG] Message");
-        appendToLogFile(LogLevel.ERROR, "Message");
-        expectLogFileMessage("[ERROR] Message");
-        appendToLogFile(LogLevel.WARN, "Message");
-        expectLogFileMessage("[WARN] Message");
-      });
-
-      it("it outputs Errors with their message and stacktrace", () => {
-        const error = new Error("Error");
-        appendToLogFile(LogLevel.ERROR, error);
-        expectLogFileMessage(`[ERROR] Error\n${error.stack}`);
-      });
-    });
-
     describe("defaultHeaderTransformer", () => {
       it("outputs the current message number and number of all commands", () => {
         const command = {
@@ -115,6 +87,31 @@ describe("Logging", () => {
       const consoleMsg = typeof header === "string" ? `${header} ${message}` : message;
       expect(getConsoleSpy(level)).toHaveBeenCalledWith(consoleMsg);
     };
+
+    describe("#appendToLogFile", () => {
+      let logger: Logger;
+      beforeEach(() => (logger = new Logger({ writeToLogFile: true })));
+
+      it("calls appendFileSync with the file path and message", () => {
+        logger.appendToLogFile(LogLevel.INFO, "Message");
+        expectLogFileMessage("[INFO] Message");
+      });
+
+      it("it uses the given log level in the output", () => {
+        logger.appendToLogFile(LogLevel.DEBUG, "Message");
+        expectLogFileMessage("[DEBUG] Message");
+        logger.appendToLogFile(LogLevel.ERROR, "Message");
+        expectLogFileMessage("[ERROR] Message");
+        logger.appendToLogFile(LogLevel.WARN, "Message");
+        expectLogFileMessage("[WARN] Message");
+      });
+
+      it("it outputs Errors with their message and stacktrace", () => {
+        const error = new Error("Error");
+        logger.appendToLogFile(LogLevel.ERROR, error);
+        expectLogFileMessage(`[ERROR] Error\n${error.stack}`);
+      });
+    });
 
     describe("#log", () => {
       it("writes to the console", () => {

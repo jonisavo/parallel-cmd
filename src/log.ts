@@ -17,13 +17,6 @@ type LogOptions = Partial<{
   headerColor: Color;
 }>;
 
-export function appendToLogFile(level: LogLevel, message: unknown): void {
-  if (message instanceof Error) {
-    message = `${message.message}\n${message.stack}`;
-  }
-  appendFileSync(LOG_FILE_PATH, `[${level}] ${message}\n`);
-}
-
 export const defaultHeaderTransformer: HeaderTransformerFunction = (
   command,
   allCommands
@@ -53,6 +46,16 @@ export class Logger {
     }
   }
 
+  appendToLogFile(level: LogLevel, message: unknown): void {
+    if (!this.writeToLogFile) {
+      return;
+    }
+    if (message instanceof Error) {
+      message = `${message.message}\n${message.stack}`;
+    }
+    appendFileSync(LOG_FILE_PATH, `[${level}] ${message}\n`);
+  }
+
   log(level: LogLevel, message: unknown, options: LogOptions = {}): void {
     const getFullMessage = ({ colorized = false } = {}) => {
       if (options.header !== undefined) {
@@ -67,9 +70,7 @@ export class Logger {
       const logFunction = Logger.getLogFunction(level);
       logFunction(getFullMessage({ colorized: true }));
     }
-    if (this.writeToLogFile) {
-      appendToLogFile(level, getFullMessage());
-    }
+    this.appendToLogFile(level, getFullMessage());
   }
 
   logInfo(message: unknown, header?: string): void {
