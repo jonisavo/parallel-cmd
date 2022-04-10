@@ -1,4 +1,5 @@
 # parallel-cmd
+[![CI](https://github.com/jonisavo/parallel-cmd/actions/workflows/node.js.yml/badge.svg)](https://github.com/jonisavo/parallel-cmd/actions/workflows/node.js.yml)
 
 Queue shell commands to run in parallel.
 
