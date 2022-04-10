@@ -11,7 +11,7 @@ afterAll(() => {
 
 const createMockStream = (): Readable => {
   const stream = new Readable();
-  stream._read = (size) => {
+  stream._read = (_size) => {
     /* dismiss */
   };
   return stream;
@@ -94,10 +94,10 @@ describe("Command spawing", () => {
       headerTransformer: jest.fn((command: Command, allCommands: Command[]) => {
         return defaultHeaderTransformer(command, allCommands);
       }),
-      spawnFunction: jest.fn((command, args) => {
+      spawnFunction: jest.fn((_command, _args) => {
         return mockSpawnFunction(0);
       }),
-      killFunction: jest.fn((pid) => Promise.resolve()),
+      killFunction: jest.fn((_pid) => Promise.resolve()),
     };
 
     beforeEach(() => {
@@ -143,7 +143,7 @@ describe("Command spawing", () => {
     describe("Non-zero exit code", () => {
       const context: SpawnCommandContext = {
         ...defaultContext,
-        spawnFunction: jest.fn((command, args) => {
+        spawnFunction: jest.fn((_command, _args) => {
           return mockSpawnFunction(1);
         }),
       };
@@ -177,7 +177,7 @@ describe("Command spawing", () => {
     describe("Process error", () => {
       const context: SpawnCommandContext = {
         ...defaultContext,
-        spawnFunction: jest.fn((command, args) => {
+        spawnFunction: jest.fn((_command, _args) => {
           const process = mockSpawnFunction(0);
           setTimeout(() => process.emit("error", new Error("Test error"), 5));
           return process;
