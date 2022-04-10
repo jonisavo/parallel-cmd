@@ -4,7 +4,7 @@ import {
   getWholeCommandString,
   parseCommand,
 } from "./command";
-import { appendToLogFile, defaultHeaderTransformer, Logger, LogLevel } from "./log";
+import { defaultHeaderTransformer, Logger, LogLevel } from "./log";
 import spawnCommand, { SpawnCommandContext, SpawnCommandResult } from "./spawnCommand";
 import spawn from "cross-spawn";
 
@@ -116,7 +116,7 @@ export default async function parallelCmd(
   if (aborted) {
     const remainingProcesses = cmds.length - currentProcessIndex;
     if (remainingProcesses > 0) {
-      appendToLogFile(LogLevel.WARN, `Skipped ${remainingProcesses} commands`);
+      logger.appendToLogFile(LogLevel.WARN, `Skipped ${remainingProcesses} commands`);
     }
     return buildResult();
   }
