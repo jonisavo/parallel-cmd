@@ -10,6 +10,7 @@
   "scripts": {
     "build": "tsc --build",
     "postbuild": "chmod +x dist/bin/parallel-cmd.js",
+    "prepublishOnly": "npm run build",
     "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
