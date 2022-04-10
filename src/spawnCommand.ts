@@ -36,7 +36,7 @@ function trimAndSplitOutput(output: string): string[] {
   return output.trim().split(/\r?\n/);
 }
 
-function processStream(
+export function processStream(
   stream: internal.Readable | null,
   callback: (data: string[]) => void
 ): void {
