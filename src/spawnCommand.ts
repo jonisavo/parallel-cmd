@@ -1,5 +1,5 @@
 import { ChildProcess } from "child_process";
-import internal from "stream";
+import { Readable } from "stream";
 import { Color } from "./colorize";
 import { Command, getWholeCommandString } from "./command";
 import { Logger, LogLevel } from "./log";
@@ -19,7 +19,7 @@ export type CommandSpawnFunction = (command: string, args: string[]) => ChildPro
 export type CommandKillFunction = (pid: number) => Promise<void>;
 
 export interface SpawnCommandResult {
-  code: number | null;
+  code: number;
 }
 
 export interface SpawnCommandContext {
@@ -37,7 +37,7 @@ function trimAndSplitOutput(output: string): string[] {
 }
 
 export function processStream(
-  stream: internal.Readable | null,
+  stream: Readable | null,
   callback: (data: string[]) => void
 ): void {
   if (stream === null) {
@@ -52,7 +52,6 @@ export default function spawnCommand(
   context: SpawnCommandContext
 ): Promise<SpawnCommandResult> {
   return new Promise((resolve, reject) => {
-    let aborted = false;
     const abortSignal = context.abortController.signal as unknown as ExtendedAbortSignal;
     const process = context.spawnFunction(command.command, command.args);
 
@@ -62,12 +61,13 @@ export default function spawnCommand(
 
     abortSignal.addEventListener("abort", onAbort, { once: true });
 
-    const end = (result: Partial<{ code: number | null; error: Error }>) => {
+    const end = (result: Partial<{ code: number; error: Error }>) => {
+      process.removeAllListeners();
       abortSignal.removeEventListener("abort", onAbort);
-      if (result.error !== undefined) {
+      if (result.error !== undefined || result.code === undefined) {
         reject(result.error);
       } else {
-        resolve({ code: result.code ?? null });
+        resolve({ code: result.code });
       }
     };
 
@@ -79,26 +79,35 @@ export default function spawnCommand(
       context.logger.appendToLogFile(LogLevel.ERROR, error);
     };
 
-    const abort = (error: Error) => {
-      if (aborted || process.pid === undefined || process.killed) {
-        return;
-      }
+    const killProcess = (pid: number) => {
       context
-        .killFunction(process.pid)
+        .killFunction(pid)
         .then(() =>
           context.logger.appendToLogFile(LogLevel.INFO, `Killed PID ${process.pid}`)
         )
-        .catch((err) =>
-          context.logger.appendToLogFile(LogLevel.ERROR, `Failed to kill process: ${err}`)
-        );
-      aborted = true;
+        .catch((err) => {
+          context.logger.appendToLogFile(
+            LogLevel.ERROR,
+            `Failed to kill process: ${err}`
+          );
+        });
+    };
+
+    const abort = (error: Error) => {
+      if (process.pid !== undefined && !process.killed) {
+        killProcess(process.pid);
+      }
+
+      context.logger.logError(
+        `Command "${getWholeCommandString(command)}" aborted`,
+        buildHeader()
+      );
+
       end({ error });
     };
 
     process.on("error", (error) => {
-      if (error.name !== "AbortError") {
-        handleError(error);
-      }
+      handleError(error);
       end({ error });
     });
 
@@ -115,24 +124,17 @@ export default function spawnCommand(
     process.on("exit", (code) => {
       const header = buildHeader();
 
-      if (code !== null && code !== 0) {
-        let error: Error;
-        if (aborted) {
-          error = new Error("Process aborted");
-        } else {
-          error = new Error(`Process exited with code ${code}`);
-        }
+      if (code !== 0) {
+        const error = new Error(`Process exited with code ${code}`);
         handleError(error);
         end({ error });
         return;
       }
 
-      if (code === null) {
-        context.logger.logWarn("Aborted", header);
-      } else {
-        const message = "Finished successfully";
-        context.logger.log(LogLevel.INFO, message, { header, headerColor: Color.GREEN });
-      }
+      context.logger.log(LogLevel.INFO, "Finished successfully", {
+        header,
+        headerColor: Color.GREEN,
+      });
 
       end({ code });
     });
