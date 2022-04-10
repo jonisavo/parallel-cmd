@@ -16,7 +16,9 @@
     "prepare": "husky install"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "!**/*.spec.js",
+    "!**/*.spec.d.ts"
   ],
   "keywords": [
     "shell",
