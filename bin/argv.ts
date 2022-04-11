@@ -26,10 +26,14 @@ export function parseParallelCmdOptionsFromArgv(argv: ARGV): ParallelCmdOptions 
     maxProcessCount = argv.p;
   }
 
-  const abortOnError = argv["abort-on-error"] || argv.a;
-  const silent = argv.silent || argv.s;
-  const writeToLogFile = argv["write-log"] || argv.l;
-  const outputStderr = argv.stderr || argv.e;
+  const checkBooleanOpts = (...opts: (keyof ARGV)[]): boolean => {
+    return opts.some((opt) => argv[opt]);
+  };
+
+  const abortOnError = checkBooleanOpts("abort-on-error", "a");
+  const silent = checkBooleanOpts("silent", "s");
+  const writeToLogFile = checkBooleanOpts("write-log", "l");
+  const outputStderr = checkBooleanOpts("stderr", "e");
   const logger = new Logger({ silent, writeToLogFile });
 
   return {
