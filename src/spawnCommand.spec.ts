@@ -9,12 +9,76 @@ afterAll(() => {
   jest.restoreAllMocks();
 });
 
-const createMockStream = (): Readable => {
+export const createMockStream = (): Readable => {
   const stream = new Readable();
   stream._read = (_size) => {
     /* dismiss */
   };
   return stream;
+};
+
+export class MockChildProcess extends ChildProcess {
+  emitTimeout?: NodeJS.Timeout;
+  resolveTimeout?: NodeJS.Timeout;
+
+  override readonly pid: number;
+
+  constructor(pid: number) {
+    super();
+    this.pid = pid;
+    this.stdout = createMockStream();
+    this.stderr = createMockStream();
+  }
+
+  clearTimeouts(): void {
+    if (this.emitTimeout) {
+      clearTimeout(this.emitTimeout);
+    }
+    if (this.resolveTimeout) {
+      clearTimeout(this.resolveTimeout);
+    }
+  }
+}
+
+export const mockSpawnFunction = ({
+  exitCode,
+  emitTimeout = 5,
+  resolveTimeout = 20,
+  pid = 1,
+}: {
+  exitCode: number;
+  emitTimeout?: number;
+  resolveTimeout?: number;
+  pid?: number;
+}): MockChildProcess => {
+  const process = new MockChildProcess(pid);
+
+  process.emitTimeout = setTimeout(() => {
+    if (!process.stdout || !process.stderr) {
+      throw new Error("Process stdout / stderr is null");
+    }
+    process.stdout.emit("data", "stdout data");
+    process.stderr.emit("data", "stderr data");
+  }, emitTimeout);
+
+  process.resolveTimeout = setTimeout(
+    () => process.emit("exit", exitCode),
+    resolveTimeout
+  );
+
+  return process;
+};
+
+export const buildMockedLogger = (): jest.Mocked<Logger> => {
+  return {
+    silent: false,
+    writeToLogFile: false,
+    appendToLogFile: jest.fn(),
+    log: jest.fn(),
+    logInfo: jest.fn(),
+    logError: jest.fn(),
+    logWarn: jest.fn(),
+  };
 };
 
 describe("Command spawing", () => {
@@ -55,36 +119,6 @@ describe("Command spawing", () => {
       args: ["a", "b"],
       index: 0,
     };
-    const mockSpawnFunction = (exitCode: number): ChildProcess => {
-      const process = new ChildProcess();
-      (process as any).pid = 1;
-      process.stdout = createMockStream();
-      process.stderr = createMockStream();
-
-      setTimeout(() => {
-        if (!process.stdout || !process.stderr) {
-          throw new Error("Process stdout / stderr is null");
-        }
-        process.stdout.emit("data", "stdout data");
-        process.stderr.emit("data", "stderr data");
-      }, 5);
-
-      setTimeout(() => process.emit("exit", exitCode), 20);
-
-      return process;
-    };
-
-    const buildMockedLogger = (): jest.Mocked<Logger> => {
-      return {
-        silent: false,
-        writeToLogFile: false,
-        appendToLogFile: jest.fn(),
-        log: jest.fn(),
-        logInfo: jest.fn(),
-        logError: jest.fn(),
-        logWarn: jest.fn(),
-      };
-    };
 
     const defaultContext: jest.Mocked<SpawnCommandContext> = {
       abortController: new AbortController(),
@@ -95,7 +129,7 @@ describe("Command spawing", () => {
         return defaultHeaderTransformer(command, allCommands);
       }),
       spawnFunction: jest.fn((_command, _args) => {
-        return mockSpawnFunction(0);
+        return mockSpawnFunction({ exitCode: 0 });
       }),
       killFunction: jest.fn((_pid) => Promise.resolve()),
     };
@@ -144,7 +178,7 @@ describe("Command spawing", () => {
       const context: SpawnCommandContext = {
         ...defaultContext,
         spawnFunction: jest.fn((_command, _args) => {
-          return mockSpawnFunction(1);
+          return mockSpawnFunction({ exitCode: 1 });
         }),
       };
 
@@ -178,7 +212,7 @@ describe("Command spawing", () => {
       const context: SpawnCommandContext = {
         ...defaultContext,
         spawnFunction: jest.fn((_command, _args) => {
-          const process = mockSpawnFunction(0);
+          const process = mockSpawnFunction({ exitCode: 0 });
           setTimeout(() => process.emit("error", new Error("Test error"), 5));
           return process;
         }),
