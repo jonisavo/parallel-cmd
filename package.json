@@ -60,6 +60,9 @@
     "tree-kill": "^1.2.2"
   },
   "lint-staged": {
-    "*.ts": ["eslint --fix", "tsc-files --noEmit"]
+    "*.ts": [
+      "eslint --fix",
+      "tsc-files --noEmit"
+    ]
   }
 }
