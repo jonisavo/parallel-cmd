@@ -125,7 +125,6 @@ export default async function parallelCmd(
     await Promise.all(runningProcesses);
   } catch {
     aborted = true;
-    return buildResult();
   }
 
   return buildResult();
