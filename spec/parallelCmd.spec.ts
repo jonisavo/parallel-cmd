@@ -1,11 +1,7 @@
-import { parseCommand } from "./command";
-import { defaultHeaderTransformer } from "./log";
-import parallelCmd, { ParallelCmdOptions } from "./parallelCmd";
-import {
-  buildMockedLogger,
-  MockChildProcess,
-  mockSpawnFunction,
-} from "./spawnCommand.spec";
+import { parseCommand } from "../src/command";
+import { defaultHeaderTransformer } from "../src/log";
+import parallelCmd, { ParallelCmdOptions } from "../src/parallelCmd";
+import { buildMockedLogger, MockChildProcess, mockSpawnFunction } from "./testHelpers";
 
 describe("parallelCmd", () => {
   const commands = ["hello world", "lorem", "parallel-cmd -a lorem ipsum"];
@@ -30,6 +26,7 @@ describe("parallelCmd", () => {
       }),
       killFunction: jest.fn((pid) => {
         const indexOfProcess = childProcesses.findIndex((process) => process.pid === pid);
+        childProcesses[indexOfProcess].clearTimeouts();
         childProcesses.splice(indexOfProcess, 1);
         return Promise.resolve();
       }),

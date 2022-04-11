@@ -1,5 +1,5 @@
 import { white, yellow, red, green, blue } from "kleur/colors";
-import { Color, colorize } from "./colorize";
+import { Color, colorize } from "../src/colorize";
 
 describe("colorize", () => {
   const TEST = "TEST";

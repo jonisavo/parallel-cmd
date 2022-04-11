@@ -1,85 +1,13 @@
 import { ChildProcess } from "child_process";
-import { Readable } from "stream";
-import { Color } from "./colorize";
-import { Command } from "./command";
-import { defaultHeaderTransformer, Logger, LogLevel } from "./log";
-import spawnCommand, { processStream, SpawnCommandContext } from "./spawnCommand";
+import { Color } from "../src/colorize";
+import { Command } from "../src/command";
+import { defaultHeaderTransformer, LogLevel } from "../src/log";
+import spawnCommand, { processStream, SpawnCommandContext } from "../src/spawnCommand";
+import { buildMockedLogger, createMockStream, mockSpawnFunction } from "./testHelpers";
 
 afterAll(() => {
   jest.restoreAllMocks();
 });
-
-export const createMockStream = (): Readable => {
-  const stream = new Readable();
-  stream._read = (_size) => {
-    /* dismiss */
-  };
-  return stream;
-};
-
-export class MockChildProcess extends ChildProcess {
-  emitTimeout?: NodeJS.Timeout;
-  resolveTimeout?: NodeJS.Timeout;
-
-  override readonly pid: number;
-
-  constructor(pid: number) {
-    super();
-    this.pid = pid;
-    this.stdout = createMockStream();
-    this.stderr = createMockStream();
-  }
-
-  clearTimeouts(): void {
-    if (this.emitTimeout) {
-      clearTimeout(this.emitTimeout);
-    }
-    if (this.resolveTimeout) {
-      clearTimeout(this.resolveTimeout);
-    }
-  }
-}
-
-export const mockSpawnFunction = ({
-  exitCode,
-  emitTimeout = 5,
-  resolveTimeout = 20,
-  pid = 1,
-}: {
-  exitCode: number;
-  emitTimeout?: number;
-  resolveTimeout?: number;
-  pid?: number;
-}): MockChildProcess => {
-  const process = new MockChildProcess(pid);
-
-  process.emitTimeout = setTimeout(() => {
-    if (!process.stdout || !process.stderr) {
-      throw new Error("Process stdout / stderr is null");
-    }
-    process.stdout.emit("data", "stdout data");
-    process.stderr.emit("data", "stderr data");
-  }, emitTimeout);
-
-  process.resolveTimeout = setTimeout(
-    () => process.emit("exit", exitCode),
-    resolveTimeout
-  );
-
-  return process;
-};
-
-export const buildMockedLogger = (): jest.Mocked<Logger> => {
-  return {
-    silent: false,
-    writeToLogFile: false,
-    appendToLogFile: jest.fn(),
-    log: jest.fn(),
-    logInfo: jest.fn(),
-    logError: jest.fn(),
-    logWarn: jest.fn(),
-  };
-};
 
 describe("Command spawing", () => {
   describe("Helper functions", () => {
@@ -120,24 +48,22 @@ describe("Command spawing", () => {
       index: 0,
     };
 
-    const defaultContext: jest.Mocked<SpawnCommandContext> = {
-      abortController: new AbortController(),
-      allCommands: [command],
-      logger: buildMockedLogger(),
-      outputStderr: false,
-      headerTransformer: jest.fn((command: Command, allCommands: Command[]) => {
-        return defaultHeaderTransformer(command, allCommands);
-      }),
-      spawnFunction: jest.fn((_command, _args) => {
-        return mockSpawnFunction({ exitCode: 0 });
-      }),
-      killFunction: jest.fn((_pid) => Promise.resolve()),
-    };
+    let defaultContext: jest.Mocked<SpawnCommandContext>;
 
     beforeEach(() => {
-      defaultContext.abortController = new AbortController();
-      defaultContext.spawnFunction.mockClear();
-      defaultContext.killFunction.mockClear();
+      defaultContext = {
+        abortController: new AbortController(),
+        allCommands: [command],
+        logger: buildMockedLogger(),
+        outputStderr: false,
+        headerTransformer: jest.fn((command: Command, allCommands: Command[]) => {
+          return defaultHeaderTransformer(command, allCommands);
+        }),
+        spawnFunction: jest.fn((_command, _args) => {
+          return mockSpawnFunction({ exitCode: 0 });
+        }),
+        killFunction: jest.fn((_pid) => Promise.resolve()),
+      };
     });
 
     it("spawns a new child process and resolves with exit code", async () => {
@@ -175,15 +101,15 @@ describe("Command spawing", () => {
     });
 
     describe("Non-zero exit code", () => {
-      const context: SpawnCommandContext = {
-        ...defaultContext,
-        spawnFunction: jest.fn((_command, _args) => {
-          return mockSpawnFunction({ exitCode: 1 });
-        }),
-      };
+      let context: SpawnCommandContext;
 
       beforeEach(() => {
-        context.abortController = new AbortController();
+        context = {
+          ...defaultContext,
+          spawnFunction: jest.fn((_command, _args) => {
+            return mockSpawnFunction({ exitCode: 1 });
+          }),
+        };
       });
 
       it("causes the promise to reject", async () => {
@@ -209,16 +135,15 @@ describe("Command spawing", () => {
     });
 
     describe("Process error", () => {
-      const context: SpawnCommandContext = {
-        ...defaultContext,
-        spawnFunction: jest.fn((_command, _args) => {
-          const process = mockSpawnFunction({ exitCode: 0 });
-          setTimeout(() => process.emit("error", new Error("Test error"), 5));
-          return process;
-        }),
-      };
-
       it("causes the promise to reject", async () => {
+        const context: SpawnCommandContext = {
+          ...defaultContext,
+          spawnFunction: jest.fn((_command, _args) => {
+            const process = mockSpawnFunction({ exitCode: 0 });
+            setTimeout(() => process.emit("error", new Error("Test error"), 5));
+            return process;
+          }),
+        };
         await expect(spawnCommand(command, context)).rejects.toEqual(
           new Error("Test error")
         );
@@ -226,17 +151,17 @@ describe("Command spawing", () => {
     });
 
     describe("Aborting process", () => {
-      const context: SpawnCommandContext = {
-        ...defaultContext,
-        spawnFunction: (command, args) => {
-          const process = defaultContext.spawnFunction(command, args);
-          setTimeout(() => context.abortController.abort(), 4);
-          return process;
-        },
-      };
+      let context: SpawnCommandContext;
 
       beforeEach(() => {
-        context.abortController = new AbortController();
+        context = {
+          ...defaultContext,
+          spawnFunction: (command, args) => {
+            const process = defaultContext.spawnFunction(command, args);
+            setTimeout(() => context.abortController.abort(), 4);
+            return process;
+          },
+        };
       });
 
       it("causes the promise to reject", async () => {

@@ -4,10 +4,10 @@ module.exports = {
   testEnvironment: "node",
   collectCoverage: true,
   coveragePathIgnorePatterns: [
-    "/node_modules/"
+    "/node_modules/",
   ],
   testPathIgnorePatterns: [
     "/node_modules/",
-    "/dist"
+    "/dist",
   ]
 };

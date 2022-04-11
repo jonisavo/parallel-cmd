@@ -1,6 +1,6 @@
 import fs from "fs";
 import { blue, red, white, yellow } from "kleur/colors";
-import { DATE_STRING, defaultHeaderTransformer, Logger, LogLevel } from "./log";
+import { DATE_STRING, defaultHeaderTransformer, Logger, LogLevel } from "../src/log";
 
 describe("Logging", () => {
   let appendFileSyncSpy: jest.SpyInstance;

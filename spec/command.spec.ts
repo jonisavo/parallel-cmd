@@ -3,7 +3,7 @@ import {
   defaultCommandKillFunction,
   getWholeCommandString,
   parseCommand,
-} from "./command";
+} from "../src/command";
 
 jest.mock("tree-kill");
 

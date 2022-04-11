@@ -1,5 +1,5 @@
 import { Logger, ParallelCmdOptions } from "../src";
-import ARGV, { parseParallelCmdOptionsFromArgv } from "./argv";
+import ARGV, { parseParallelCmdOptionsFromArgv } from "../bin/argv";
 
 describe("ARGV utilities", () => {
   describe("parseParallelCmdOptionsFromArgv", () => {
