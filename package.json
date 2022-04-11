@@ -18,7 +18,8 @@
   },
   "files": [
     "dist/",
-    "!dist/spec/"
+    "!dist/spec/",
+    "CHANGELOG.md"
   ],
   "keywords": [
     "shell",
