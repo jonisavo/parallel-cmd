@@ -34,6 +34,8 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@commitlint/cli": "^16.2.3",
+    "@commitlint/config-conventional": "^16.2.1",
     "@types/cross-spawn": "^6.0.2",
     "@types/jest": "^27.4.1",
     "@types/minimist": "^1.2.2",
@@ -63,5 +65,8 @@
       "eslint --fix",
       "tsc-files --noEmit"
     ]
+  },
+  "commitlint": {
+    "extends": ["@commitlint/config-conventional"]
   }
 }
