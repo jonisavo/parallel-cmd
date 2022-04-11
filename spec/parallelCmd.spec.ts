@@ -1,10 +1,10 @@
-import { parseCommand } from "../src/command";
-import { defaultHeaderTransformer } from "../src/log";
+import { getWholeCommandString, parseCommand } from "../src/command";
+import { defaultHeaderTransformer, LogLevel } from "../src/log";
 import parallelCmd, { ParallelCmdOptions } from "../src/parallelCmd";
 import { buildMockedLogger, MockChildProcess, mockSpawnFunction } from "./testHelpers";
 
 describe("parallelCmd", () => {
-  const commands = ["hello world", "lorem", "parallel-cmd -a lorem ipsum"];
+  const commands = ["hello world", "lorem", "parallel-cmd -a lorem ipsum", "exit 0"];
 
   let childProcesses: MockChildProcess[] = [];
 
@@ -19,7 +19,7 @@ describe("parallelCmd", () => {
       abortOnError: false,
       outputStderr: false,
       headerTransformer: defaultHeaderTransformer,
-      spawnFunction: jest.fn((_command) => {
+      spawnFunction: jest.fn((_command, _args) => {
         const process = mockSpawnFunction({ exitCode: 0 });
         childProcesses.push(process);
         return process;
@@ -34,11 +34,32 @@ describe("parallelCmd", () => {
     };
   });
 
+  const createDifferentSpawnFunctionForCommand = (
+    spawnFunc: () => MockChildProcess,
+    predicate: (command: string) => boolean
+  ): jest.Mock<MockChildProcess, [command: string, args: string[]]> => {
+    return jest.fn((command: string, args: string[]) => {
+      const entireCommand = getWholeCommandString({
+        command,
+        args,
+        index: 0,
+      });
+      let process: MockChildProcess;
+      if (predicate(entireCommand)) {
+        process = spawnFunc();
+      } else {
+        process = mockSpawnFunction({ exitCode: 0 });
+      }
+      childProcesses.push(process);
+      return process;
+    });
+  };
+
   afterEach(() => {
     jest.resetAllMocks();
   });
 
-  it("calls the spawn function for each process", async () => {
+  it("calls the spawn function for each process according to the max process count", async () => {
     const promise = parallelCmd(commands, options);
 
     expect(options.spawnFunction).toHaveBeenCalledWith("hello", ["world"]);
@@ -48,7 +69,24 @@ describe("parallelCmd", () => {
       "lorem",
       "ipsum",
     ]);
+    expect(options.spawnFunction).not.toHaveBeenCalledWith("exit", ["0"]);
 
+    await promise;
+
+    expect(options.spawnFunction).toHaveBeenCalledWith("exit", ["0"]);
+  });
+
+  it("starts every command at once if the process count is zero", async () => {
+    options.maxProcessCount = 0;
+    const promise = parallelCmd(commands, options);
+    expect(options.spawnFunction).toHaveBeenCalledWith("hello", ["world"]);
+    expect(options.spawnFunction).toHaveBeenCalledWith("lorem", []);
+    expect(options.spawnFunction).toHaveBeenCalledWith("parallel-cmd", [
+      "-a",
+      "lorem",
+      "ipsum",
+    ]);
+    expect(options.spawnFunction).toHaveBeenCalledWith("exit", ["0"]);
     await promise;
   });
 
@@ -57,50 +95,53 @@ describe("parallelCmd", () => {
       const result = await parallelCmd(commands, options);
       expect(result).toEqual({
         aborted: false,
-        totalProcessCount: 3,
-        completedProcessCount: 3,
+        totalProcessCount: 4,
+        completedProcessCount: 4,
         failedProcessCount: 0,
       });
     });
 
     it("contains the correct values when some processes fail", async () => {
-      options.spawnFunction = jest.fn((command) => {
-        let process: MockChildProcess;
-        if (command === commands[1]) {
-          process = mockSpawnFunction({ exitCode: 1 });
-        } else {
-          process = mockSpawnFunction({ exitCode: 0 });
-        }
-        childProcesses.push(process);
-        return process;
-      });
+      options.spawnFunction = createDifferentSpawnFunctionForCommand(
+        () => mockSpawnFunction({ exitCode: 1 }),
+        (command) => command === commands[1]
+      );
       const result = await parallelCmd(commands, options);
       expect(result).toEqual({
         aborted: false,
-        totalProcessCount: 3,
-        completedProcessCount: 2,
+        totalProcessCount: 4,
+        completedProcessCount: 3,
         failedProcessCount: 1,
       });
     });
 
-    it("contains the correct values when the processes are aborted", async () => {
+    it("contains the correct values when one of the first processes fails", async () => {
       options.abortOnError = true;
-      options.spawnFunction = jest.fn((command) => {
-        let process: MockChildProcess;
-        if (command === commands[1]) {
-          process = mockSpawnFunction({ exitCode: 1, emitTimeout: 1, resolveTimeout: 5 });
-        } else {
-          process = mockSpawnFunction({ exitCode: 0 });
-        }
-        childProcesses.push(process);
-        return process;
-      });
+      options.spawnFunction = createDifferentSpawnFunctionForCommand(
+        () => mockSpawnFunction({ exitCode: 1, emitTimeout: 1, resolveTimeout: 5 }),
+        (command) => command === commands[1]
+      );
       const result = await parallelCmd(commands, options);
       expect(result).toEqual({
         aborted: true,
-        totalProcessCount: 3,
+        totalProcessCount: 4,
         completedProcessCount: 0,
         failedProcessCount: 3,
+      });
+    });
+
+    it("contains the correct values when the last remaining process is aborted", async () => {
+      options.abortOnError = true;
+      options.spawnFunction = createDifferentSpawnFunctionForCommand(
+        () => mockSpawnFunction({ exitCode: 1, emitTimeout: 0, resolveTimeout: 7 }),
+        (command) => command === commands[commands.length - 1]
+      );
+      const result = await parallelCmd(commands, options);
+      expect(result).toEqual({
+        aborted: true,
+        totalProcessCount: 4,
+        completedProcessCount: 3,
+        failedProcessCount: 1,
       });
     });
   });
@@ -111,25 +152,35 @@ describe("parallelCmd", () => {
 
       expect(options.logger.logInfo).toHaveBeenCalledWith(
         'Running command "hello world"',
-        "[1/3]"
+        "[1/4]"
       );
       expect(options.logger.logInfo).toHaveBeenCalledWith(
         'Running command "lorem"',
-        "[2/3]"
+        "[2/4]"
       );
       expect(options.logger.logInfo).toHaveBeenCalledWith(
         'Running command "parallel-cmd -a lorem ipsum"',
-        "[3/3]"
+        "[3/4]"
+      );
+      expect(options.logger.logInfo).not.toHaveBeenCalledWith(
+        'Running command "exit 0"',
+        "[4/4]"
       );
 
       await promise;
+
+      expect(options.logger.logInfo).toHaveBeenCalledWith(
+        'Running command "exit 0"',
+        "[4/4]"
+      );
     });
     it("is done for stdout of each process", async () => {
       await parallelCmd(commands, options);
 
-      expect(options.logger.logInfo).toHaveBeenCalledWith("stdout data", "[1/3]");
-      expect(options.logger.logInfo).toHaveBeenCalledWith("stdout data", "[2/3]");
-      expect(options.logger.logInfo).toHaveBeenCalledWith("stdout data", "[3/3]");
+      expect(options.logger.logInfo).toHaveBeenCalledWith("stdout data", "[1/4]");
+      expect(options.logger.logInfo).toHaveBeenCalledWith("stdout data", "[2/4]");
+      expect(options.logger.logInfo).toHaveBeenCalledWith("stdout data", "[3/4]");
+      expect(options.logger.logInfo).toHaveBeenCalledWith("stdout data", "[4/4]");
     });
   });
 
@@ -143,9 +194,23 @@ describe("parallelCmd", () => {
       options.outputStderr = true;
       await parallelCmd(commands, options);
 
-      expect(options.logger.logWarn).toHaveBeenCalledWith("stderr data", "[1/3]");
-      expect(options.logger.logWarn).toHaveBeenCalledWith("stderr data", "[2/3]");
-      expect(options.logger.logWarn).toHaveBeenCalledWith("stderr data", "[3/3]");
+      expect(options.logger.logWarn).toHaveBeenCalledWith("stderr data", "[1/4]");
+      expect(options.logger.logWarn).toHaveBeenCalledWith("stderr data", "[2/4]");
+      expect(options.logger.logWarn).toHaveBeenCalledWith("stderr data", "[3/4]");
+      expect(options.logger.logWarn).toHaveBeenCalledWith("stderr data", "[4/4]");
     });
+  });
+
+  it("outputs a message to the log file on abort when commands are skipped", async () => {
+    options.abortOnError = true;
+    options.spawnFunction = createDifferentSpawnFunctionForCommand(
+      () => mockSpawnFunction({ exitCode: 1, emitTimeout: 1, resolveTimeout: 5 }),
+      (command) => command === commands[1]
+    );
+    await parallelCmd(commands, options);
+    expect(options.logger.appendToLogFile).toHaveBeenCalledWith(
+      LogLevel.WARN,
+      "Skipped 1 commands"
+    );
   });
 });
