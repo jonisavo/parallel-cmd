@@ -48,10 +48,10 @@ describe("Command spawing", () => {
       index: 0,
     };
 
-    let defaultContext: jest.Mocked<SpawnCommandContext>;
+    let context: jest.Mocked<SpawnCommandContext>;
 
     beforeEach(() => {
-      defaultContext = {
+      context = {
         abortController: new AbortController(),
         allCommands: [command],
         logger: buildMockedLogger(),
@@ -67,18 +67,15 @@ describe("Command spawing", () => {
     });
 
     it("spawns a new child process and resolves with exit code", async () => {
-      await expect(spawnCommand(command, defaultContext)).resolves.toEqual({ code: 0 });
+      await expect(spawnCommand(command, context)).resolves.toEqual({ code: 0 });
 
-      expect(defaultContext.spawnFunction).toHaveBeenCalledWith(
-        command.command,
-        command.args
-      );
+      expect(context.spawnFunction).toHaveBeenCalledWith(command.command, command.args);
     });
 
     it("outputs a message when the process exits successfully", async () => {
-      await spawnCommand(command, defaultContext);
+      await spawnCommand(command, context);
 
-      expect(defaultContext.logger.log).toHaveBeenCalledWith(
+      expect(context.logger.log).toHaveBeenCalledWith(
         LogLevel.INFO,
         "Finished successfully",
         { header: "[1/1]", headerColor: Color.GREEN }
@@ -86,30 +83,25 @@ describe("Command spawing", () => {
     });
 
     it("emits to stdout by default", async () => {
-      await spawnCommand(command, defaultContext);
+      await spawnCommand(command, context);
 
-      expect(defaultContext.logger.logInfo).toHaveBeenCalledWith("stdout data", "[1/1]");
+      expect(context.logger.logInfo).toHaveBeenCalledWith("stdout data", "[1/1]");
     });
 
     it("emits to stderr if enabled", async () => {
       await spawnCommand(command, {
-        ...defaultContext,
+        ...context,
         outputStderr: true,
       });
 
-      expect(defaultContext.logger.logWarn).toHaveBeenCalledWith("stderr data", "[1/1]");
+      expect(context.logger.logWarn).toHaveBeenCalledWith("stderr data", "[1/1]");
     });
 
     describe("Non-zero exit code", () => {
-      let context: SpawnCommandContext;
-
       beforeEach(() => {
-        context = {
-          ...defaultContext,
-          spawnFunction: jest.fn((_command, _args) => {
-            return mockSpawnFunction({ exitCode: 1 });
-          }),
-        };
+        context.spawnFunction.mockImplementation((_command, _args) => {
+          return mockSpawnFunction({ exitCode: 1 });
+        });
       });
 
       it("causes the promise to reject", async () => {
@@ -123,11 +115,11 @@ describe("Command spawing", () => {
           /* dismiss */
         });
 
-        expect(defaultContext.logger.logError).toHaveBeenCalledWith(
+        expect(context.logger.logError).toHaveBeenCalledWith(
           'Command "test a b" failed: Process exited with code 1',
           "[1/1]"
         );
-        expect(defaultContext.logger.appendToLogFile).toHaveBeenLastCalledWith(
+        expect(context.logger.appendToLogFile).toHaveBeenLastCalledWith(
           LogLevel.ERROR,
           new Error("Process exited with code 1")
         );
@@ -136,14 +128,11 @@ describe("Command spawing", () => {
 
     describe("Process error", () => {
       it("causes the promise to reject", async () => {
-        const context: SpawnCommandContext = {
-          ...defaultContext,
-          spawnFunction: jest.fn((_command, _args) => {
-            const process = mockSpawnFunction({ exitCode: 0 });
-            setTimeout(() => process.emit("error", new Error("Test error"), 5));
-            return process;
-          }),
-        };
+        context.spawnFunction.mockImplementation((_command, _args) => {
+          const process = mockSpawnFunction({ exitCode: 0 });
+          setTimeout(() => process.emit("error", new Error("Test error"), 5));
+          return process;
+        });
         await expect(spawnCommand(command, context)).rejects.toEqual(
           new Error("Test error")
         );
@@ -151,17 +140,12 @@ describe("Command spawing", () => {
     });
 
     describe("Aborting process", () => {
-      let context: SpawnCommandContext;
-
       beforeEach(() => {
-        context = {
-          ...defaultContext,
-          spawnFunction: (command, args) => {
-            const process = defaultContext.spawnFunction(command, args);
-            setTimeout(() => context.abortController.abort(), 4);
-            return process;
-          },
-        };
+        context.spawnFunction.mockImplementation((_command, _args) => {
+          const process = mockSpawnFunction({ exitCode: 0 });
+          setTimeout(() => context.abortController.abort(), 4);
+          return process;
+        });
       });
 
       it("causes the promise to reject", async () => {
@@ -196,7 +180,7 @@ describe("Command spawing", () => {
 
       it("does not kill the process if the PID is undefined", async () => {
         const spawnFunction = (command: string, args: string[]): ChildProcess => {
-          const process = defaultContext.spawnFunction(command, args);
+          const process = context.spawnFunction(command, args);
           setTimeout(() => context.abortController.abort(), 4);
           (process as any).pid = undefined;
           return process;
@@ -211,7 +195,7 @@ describe("Command spawing", () => {
 
       it("does not kill the process if it has already been killed", async () => {
         const spawnFunction = (command: string, args: string[]): ChildProcess => {
-          const process = defaultContext.spawnFunction(command, args);
+          const process = context.spawnFunction(command, args);
           setTimeout(() => context.abortController.abort(), 4);
           (process as any).killed = true;
           return process;
@@ -224,20 +208,16 @@ describe("Command spawing", () => {
         }
       });
 
-      // TODO: Fix this test, it doesn't work for some reason
-      xit("outputs an error in the log file if the process can not be killed", async () => {
-        const logger = buildMockedLogger();
-        logger.writeToLogFile = true;
-
-        const killFunction = (_pid: number) => {
+      it("outputs an error in the log file if the process can not be killed", async () => {
+        context.killFunction.mockImplementation((_pid: number) => {
           return Promise.reject("Test failure");
-        };
+        });
 
         expect.assertions(1);
         try {
-          await spawnCommand(command, { ...context, logger, killFunction });
+          await spawnCommand(command, context);
         } catch (e) {
-          expect(logger.appendToLogFile).toHaveBeenCalledWith(
+          expect(context.logger.appendToLogFile).toHaveBeenCalledWith(
             LogLevel.ERROR,
             "Failed to kill process: Test failure"
           );
