@@ -79,8 +79,8 @@ export default function spawnCommand(
       context.logger.appendToLogFile(LogLevel.ERROR, error);
     };
 
-    const killProcess = (pid: number) => {
-      context
+    const killProcess = (pid: number): Promise<void> => {
+      return context
         .killFunction(pid)
         .then(() =>
           context.logger.appendToLogFile(LogLevel.INFO, `Killed PID ${process.pid}`)
@@ -93,9 +93,9 @@ export default function spawnCommand(
         });
     };
 
-    const abort = (error: Error) => {
+    const abort = async (error: Error) => {
       if (process.pid !== undefined && !process.killed) {
-        killProcess(process.pid);
+        await killProcess(process.pid);
       }
 
       context.logger.logError(
