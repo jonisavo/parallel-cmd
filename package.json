@@ -1,6 +1,6 @@
 {
   "name": "parallel-cmd",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Queue shell commands to run in parallel",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",

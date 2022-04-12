@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.3](https://github.com/jonisavo/parallel-cmd/compare/v0.3.2...v0.3.3) (2022-04-12)
+
+
+### Bug Fixes
+
+* **spawnCommand:** wait for processes to be killed before rejecting ([21b7bef](https://git.savolainen.io/joni/parallel-cmd/commit/21b7bef8ec9f12c0d66a48e7922b2a8ac0857ad7))
+
 ### 0.3.2 (2022-04-12)
 This is the first version to use conventional commits and [standard-version](https://github.com/conventional-changelog/standard-version).
 
