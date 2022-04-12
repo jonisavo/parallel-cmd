@@ -1,7 +1,16 @@
+import spawn = require("cross-spawn");
+import treeKill = require("tree-kill");
 import { getWholeCommandString, parseCommand } from "../src/command";
 import { defaultHeaderTransformer, LogLevel } from "../src/log";
 import parallelCmd, { ParallelCmdOptions } from "../src/parallelCmd";
 import { buildMockedLogger, MockChildProcess, mockSpawnFunction } from "./testHelpers";
+
+jest.mock("cross-spawn");
+jest.mock("tree-kill");
+
+afterAll(() => {
+  jest.restoreAllMocks();
+});
 
 describe("parallelCmd", () => {
   const commands = ["hello world", "lorem", "parallel-cmd -a lorem ipsum", "exit 0"];
@@ -88,6 +97,27 @@ describe("parallelCmd", () => {
     ]);
     expect(options.spawnFunction).toHaveBeenCalledWith("exit", ["0"]);
     await promise;
+  });
+
+  it("uses cross-spawn as the default spawn function", async () => {
+    const promise = parallelCmd(commands);
+
+    expect(spawn).toHaveBeenCalledWith("hello", ["world"]);
+    expect(spawn).toHaveBeenCalledWith("lorem", []);
+    expect(spawn).toHaveBeenCalledWith("parallel-cmd", ["-a", "lorem", "ipsum"]);
+
+    await promise;
+
+    expect(spawn).toHaveBeenCalledWith("exit", ["0"]);
+  });
+
+  it("uses treeKill as the default kill function", async () => {
+    const spawnFunction = createDifferentSpawnFunctionForCommand(
+      () => mockSpawnFunction({ exitCode: 1 }),
+      (command) => command === commands[0]
+    );
+    await parallelCmd(commands, { spawnFunction, abortOnError: true });
+    expect(treeKill).toHaveBeenCalled();
   });
 
   describe("return value", () => {
@@ -201,16 +231,30 @@ describe("parallelCmd", () => {
     });
   });
 
-  it("outputs a message to the log file on abort when commands are skipped", async () => {
+  const createAbortMockOptions = (): void => {
     options.abortOnError = true;
     options.spawnFunction = createDifferentSpawnFunctionForCommand(
       () => mockSpawnFunction({ exitCode: 1, emitTimeout: 1, resolveTimeout: 5 }),
       (command) => command === commands[1]
     );
+  };
+
+  it("outputs a message to the log file on abort when a command is skipped", async () => {
+    createAbortMockOptions();
     await parallelCmd(commands, options);
     expect(options.logger.appendToLogFile).toHaveBeenCalledWith(
       LogLevel.WARN,
-      "Skipped 1 commands"
+      "Skipped 1 command"
+    );
+  });
+
+  it("outputs a message to the log file on abort when multiple commands are skipped", async () => {
+    createAbortMockOptions();
+    const newCommands = [...commands, "final"];
+    await parallelCmd(newCommands, options);
+    expect(options.logger.appendToLogFile).toHaveBeenCalledWith(
+      LogLevel.WARN,
+      "Skipped 2 commands"
     );
   });
 });
