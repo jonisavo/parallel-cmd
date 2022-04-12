@@ -116,7 +116,11 @@ export default async function parallelCmd(
   if (aborted) {
     const remainingProcesses = cmds.length - currentProcessIndex;
     if (remainingProcesses > 0) {
-      logger.appendToLogFile(LogLevel.WARN, `Skipped ${remainingProcesses} commands`);
+      const commandWord = remainingProcesses === 1 ? "command" : "commands";
+      logger.appendToLogFile(
+        LogLevel.WARN,
+        `Skipped ${remainingProcesses} ${commandWord}`
+      );
     }
     return buildResult();
   }
