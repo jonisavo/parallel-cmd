@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 ### 0.3.2 (2022-04-12)
+This is the first version to use conventional commits and [standard-version](https://github.com/conventional-changelog/standard-version).
 
 
 ### Features
@@ -14,17 +15,23 @@ All notable changes to this project will be documented in this file. See [standa
 
 * use singular "command" in log if a single command is skipped ([8ef9530](https://git.savolainen.io/joni/parallel-cmd/commit/8ef953040bfd10126c87544e1a39346317cc7854))
 
-# 0.3.1 [2022-04-10]
+### 0.3.1 (2022-04-10)
 
-- Fix build error in `parallelCmd`.ts
 
-# 0.3.0 [2022-04-10]
+### Bug Fixes
 
-- Add instance method `Logger#appendToLogFile`
-- Refactored codebase to make unit testing easier
+* Fix build error in `parallelCmd`.ts
 
-# 0.2.0 [2022-04-10]
+### 0.3.0 (2022-04-10)
+
+
+### Features
+
+* Add instance method `Logger#appendToLogFile`
+* Refactored codebase to make unit testing easier
+
+### 0.2.0 (2022-04-10)
 - Switched to semantic versioning
 
-# 0.1.0 [2022-04-07]
+### 0.1.0 (2022-04-07)
 - Initial development version
