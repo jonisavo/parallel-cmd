@@ -12,6 +12,13 @@ export const createMockStream = (): Readable => {
   return stream;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const asMockedFunction = <T extends (...args: any[]) => any>(
+  func: T
+): jest.MockedFunction<T> => {
+  return func as jest.MockedFunction<T>;
+};
+
 export class MockChildProcess extends ChildProcess {
   emitTimeout?: NodeJS.Timeout;
   resolveTimeout?: NodeJS.Timeout;
