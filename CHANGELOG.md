@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://git.savolainen.io/joni/parallel-cmd/compare/v0.3.3...v0.4.0) (2022-04-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** exit with code 1 on abort
+
+### Features
+
+* **cli:** exit with code 1 on abort ([7f3b3a9](https://git.savolainen.io/joni/parallel-cmd/commit/7f3b3a96af519c8ff37b05eac1f1d2eac88f35f7))
+
 ### [0.3.3](https://github.com/jonisavo/parallel-cmd/compare/v0.3.2...v0.3.3) (2022-04-12)
 
 
