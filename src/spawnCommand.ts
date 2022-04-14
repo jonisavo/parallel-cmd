@@ -49,12 +49,6 @@ export default function spawnCommand(
   return new Promise((resolve, reject) => {
     const process = context.spawnFunction(command.command, command.args);
 
-    const onAbort = () => {
-      abort(new Error("The operation was aborted"));
-    };
-
-    addListenerToAbortEmitter(context.abortEmitter, onAbort);
-
     const end = (result: Partial<{ code: number; error: Error }>) => {
       process.removeAllListeners();
       removeListenerFromAbortEmitter(context.abortEmitter, onAbort);
@@ -63,6 +57,25 @@ export default function spawnCommand(
       } else {
         resolve({ code: result.code });
       }
+    };
+
+    const onAbort = () => {
+      abort(new Error("The operation was aborted"));
+    };
+
+    addListenerToAbortEmitter(context.abortEmitter, onAbort);
+
+    const abort = async (error: Error) => {
+      context.logger.logWarn(
+        `Aborting command "${getWholeCommandString(command)}"`,
+        buildHeader()
+      );
+
+      if (process.pid !== undefined && !process.killed) {
+        await killProcess(process.pid);
+      }
+
+      end({ error });
     };
 
     const buildHeader = () => context.headerTransformer(command, context.allCommands);
@@ -85,19 +98,6 @@ export default function spawnCommand(
             `Failed to kill process: ${err}`
           );
         });
-    };
-
-    const abort = async (error: Error) => {
-      context.logger.logWarn(
-        `Aborting command "${getWholeCommandString(command)}"`,
-        buildHeader()
-      );
-
-      if (process.pid !== undefined && !process.killed) {
-        await killProcess(process.pid);
-      }
-
-      end({ error });
     };
 
     process.on("error", (error) => {
