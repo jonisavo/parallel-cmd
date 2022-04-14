@@ -14,7 +14,7 @@ afterAll(() => {
 describe("Command spawing", () => {
   describe("Helper functions", () => {
     describe("processStream", () => {
-      it("sets the stream enconding to UTF-8", () => {
+      it("sets the stream encoding to UTF-8", () => {
         const stream = createMockStream();
         processStream(stream, (_data) => {
           /* dismiss */
