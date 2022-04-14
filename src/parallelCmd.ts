@@ -67,7 +67,6 @@ export default async function parallelCmd(
         return result;
       })
       .catch((error) => {
-        process.exitCode = 1;
         failedProcessCount++;
 
         if (abortOnError) {
