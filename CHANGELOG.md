@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.1](https://github.com/jonisavo/parallel-cmd/compare/v0.5.0...v0.5.1) (2022-04-14)
+
+
+### Features
+
+* categorize abort message as a warning instead of error ([f52575a](https://github.com/jonisavo/parallel-cmd/commit/f52575ad7a9258ce74bc070335ff8bd0f643d483))
+* show message before aboring command, instead of after ([91bac2d](https://github.com/jonisavo/parallel-cmd/commit/91bac2d562f359a5d88e9c15b8b5556add9b2dd7))
+
 ## [0.5.0](https://github.com/jonisavo/parallel-cmd/compare/v0.4.1...v0.5.0) (2022-04-14)
 
 
