@@ -1,4 +1,6 @@
 import { ChildProcess } from "child_process";
+import { EventEmitter } from "stream";
+import { emitAbortEmitter } from "../src/abort";
 import { Color } from "../src/colorize";
 import { Command } from "../src/command";
 import { defaultHeaderTransformer, LogLevel } from "../src/log";
@@ -52,7 +54,7 @@ describe("Command spawing", () => {
 
     beforeEach(() => {
       context = {
-        abortController: new AbortController(),
+        abortEmitter: new EventEmitter(),
         allCommands: [command],
         logger: buildMockedLogger(),
         outputStderr: false,
@@ -143,7 +145,7 @@ describe("Command spawing", () => {
       beforeEach(() => {
         context.spawnFunction.mockImplementation((_command, _args) => {
           const process = mockSpawnFunction({ exitCode: 0 });
-          setTimeout(() => context.abortController.abort(), 4);
+          setTimeout(() => emitAbortEmitter(context.abortEmitter), 4);
           return process;
         });
       });
@@ -181,7 +183,7 @@ describe("Command spawing", () => {
       it("does not kill the process if the PID is undefined", async () => {
         const spawnFunction = (command: string, args: string[]): ChildProcess => {
           const process = context.spawnFunction(command, args);
-          setTimeout(() => context.abortController.abort(), 4);
+          setTimeout(() => emitAbortEmitter(context.abortEmitter), 4);
           (process as any).pid = undefined;
           return process;
         };
@@ -196,7 +198,7 @@ describe("Command spawing", () => {
       it("does not kill the process if it has already been killed", async () => {
         const spawnFunction = (command: string, args: string[]): ChildProcess => {
           const process = context.spawnFunction(command, args);
-          setTimeout(() => context.abortController.abort(), 4);
+          setTimeout(() => emitAbortEmitter(context.abortEmitter), 4);
           (process as any).killed = true;
           return process;
         };

@@ -7,6 +7,8 @@ import {
 import { defaultHeaderTransformer, Logger, LogLevel } from "./log";
 import spawnCommand, { SpawnCommandContext, SpawnCommandResult } from "./spawnCommand";
 import spawn from "cross-spawn";
+import { EventEmitter } from "stream";
+import { emitAbortEmitter } from "./abort";
 
 export type HeaderTransformerFunction = (
   command: Command,
@@ -29,7 +31,7 @@ export interface ParallelCmdResult {
 export default async function parallelCmd(
   commands: string[],
   {
-    abortController = new AbortController(),
+    abortEmitter = new EventEmitter(),
     maxProcessCount = 3,
     abortOnError = false,
     outputStderr = false,
@@ -46,7 +48,7 @@ export default async function parallelCmd(
   let failedProcessCount = 0;
 
   const spawnCommandContext: SpawnCommandContext = {
-    abortController,
+    abortEmitter,
     allCommands: cmds,
     outputStderr,
     headerTransformer,
@@ -69,7 +71,7 @@ export default async function parallelCmd(
         failedProcessCount++;
 
         if (abortOnError) {
-          abortController.abort();
+          emitAbortEmitter(spawnCommandContext.abortEmitter);
           throw error;
         }
 
