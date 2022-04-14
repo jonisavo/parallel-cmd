@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.5.0](https://github.com/jonisavo/parallel-cmd/compare/v0.4.1...v0.5.0) (2022-04-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **parallelCmd:** The "abortController" option has been renamed to "abortEmitter"
+
+### Features
+
+* **parallelCmd:** abort with EventEmitter ([6809c59](https://github.com/jonisavo/parallel-cmd/commit/6809c59250ce16a554670498820ac6fd16d597f5))
+
 ### [0.4.1](https://github.com/jonisavo/parallel-cmd/compare/v0.4.0...v0.4.1) (2022-04-13)
 
 * Fix links in changelog
