@@ -1,4 +1,5 @@
 import spawn = require("cross-spawn");
+import { EventEmitter } from "stream";
 import treeKill = require("tree-kill");
 import { getWholeCommandString, parseCommand } from "../src/command";
 import { defaultHeaderTransformer, LogLevel } from "../src/log";
@@ -23,7 +24,7 @@ describe("parallelCmd", () => {
     childProcesses = [];
     options = {
       allCommands: commands.map((text, i) => parseCommand(text, i)),
-      abortController: new AbortController(),
+      abortEmitter: new EventEmitter(),
       maxProcessCount: 3,
       abortOnError: false,
       outputStderr: false,

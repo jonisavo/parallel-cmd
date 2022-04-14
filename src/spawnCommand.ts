@@ -1,19 +1,14 @@
 import { ChildProcess } from "child_process";
 import { Readable } from "stream";
+import {
+  AbortEmitter,
+  addListenerToAbortEmitter,
+  removeListenerFromAbortEmitter,
+} from "./abort";
 import { Color } from "./colorize";
 import { Command, getWholeCommandString } from "./command";
 import { Logger, LogLevel } from "./log";
 import { HeaderTransformerFunction } from "./parallelCmd";
-
-// Define interface missing from @types/node
-interface ExtendedAbortSignal extends AbortSignal {
-  addEventListener: (
-    type: "abort",
-    listener: (event: "abort") => void,
-    options: { once: boolean }
-  ) => void;
-  removeEventListener: (type: "abort", listener: (event: "abort") => void) => void;
-}
 
 export type CommandSpawnFunction = (command: string, args: string[]) => ChildProcess;
 export type CommandKillFunction = (pid: number) => Promise<void>;
@@ -23,7 +18,7 @@ export interface SpawnCommandResult {
 }
 
 export interface SpawnCommandContext {
-  abortController: AbortController;
+  abortEmitter: AbortEmitter;
   allCommands: Command[];
   logger: Logger;
   outputStderr: boolean;
@@ -52,18 +47,17 @@ export default function spawnCommand(
   context: SpawnCommandContext
 ): Promise<SpawnCommandResult> {
   return new Promise((resolve, reject) => {
-    const abortSignal = context.abortController.signal as unknown as ExtendedAbortSignal;
     const process = context.spawnFunction(command.command, command.args);
 
     const onAbort = () => {
       abort(new Error("The operation was aborted"));
     };
 
-    abortSignal.addEventListener("abort", onAbort, { once: true });
+    addListenerToAbortEmitter(context.abortEmitter, onAbort);
 
     const end = (result: Partial<{ code: number; error: Error }>) => {
       process.removeAllListeners();
-      abortSignal.removeEventListener("abort", onAbort);
+      removeListenerFromAbortEmitter(context.abortEmitter, onAbort);
       if (result.error !== undefined || result.code === undefined) {
         reject(result.error);
       } else {
