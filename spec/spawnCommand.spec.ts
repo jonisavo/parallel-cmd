@@ -160,7 +160,7 @@ describe("Command spawing", () => {
             expect(e.message).toEqual("The operation was aborted");
           }
           expect(context.logger.logWarn).toHaveBeenCalledWith(
-            'Command "test a b" aborted',
+            'Aborting command "test a b"',
             "[1/1]"
           );
         }

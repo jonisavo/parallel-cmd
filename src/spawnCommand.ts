@@ -88,14 +88,14 @@ export default function spawnCommand(
     };
 
     const abort = async (error: Error) => {
+      context.logger.logWarn(
+        `Aborting command "${getWholeCommandString(command)}"`,
+        buildHeader()
+      );
+
       if (process.pid !== undefined && !process.killed) {
         await killProcess(process.pid);
       }
-
-      context.logger.logWarn(
-        `Command "${getWholeCommandString(command)}" aborted`,
-        buildHeader()
-      );
 
       end({ error });
     };
