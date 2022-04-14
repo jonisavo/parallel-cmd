@@ -92,7 +92,7 @@ export default function spawnCommand(
         await killProcess(process.pid);
       }
 
-      context.logger.logError(
+      context.logger.logWarn(
         `Command "${getWholeCommandString(command)}" aborted`,
         buildHeader()
       );
