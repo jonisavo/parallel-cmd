@@ -47,13 +47,19 @@ export const mockSpawnFunction = ({
   emitTimeout = 5,
   resolveTimeout = 20,
   pid = 1,
+  dontResolve = false,
 }: {
   exitCode: number;
   emitTimeout?: number;
   resolveTimeout?: number;
   pid?: number;
+  dontResolve?: boolean;
 }): MockChildProcess => {
   const process = new MockChildProcess(pid);
+
+  if (dontResolve) {
+    return process;
+  }
 
   process.emitTimeout = setTimeout(() => {
     if (!process.stdout || !process.stderr) {

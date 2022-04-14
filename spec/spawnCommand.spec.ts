@@ -131,7 +131,7 @@ describe("Command spawing", () => {
     describe("Process error", () => {
       it("causes the promise to reject", async () => {
         context.spawnFunction.mockImplementation((_command, _args) => {
-          const process = mockSpawnFunction({ exitCode: 0 });
+          const process = mockSpawnFunction({ exitCode: 0, dontResolve: true });
           setTimeout(() => process.emit("error", new Error("Test error"), 5));
           return process;
         });
@@ -144,7 +144,7 @@ describe("Command spawing", () => {
     describe("Aborting process", () => {
       beforeEach(() => {
         context.spawnFunction.mockImplementation((_command, _args) => {
-          const process = mockSpawnFunction({ exitCode: 0 });
+          const process = mockSpawnFunction({ exitCode: 0, dontResolve: true });
           setTimeout(() => emitAbortEmitter(context.abortEmitter), 4);
           return process;
         });
